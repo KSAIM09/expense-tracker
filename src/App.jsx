@@ -33,7 +33,7 @@ function App() {
       }
     });
     return () => unsubscribe();
-  }, []);
+  }, [location, navigate]);
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -81,45 +81,48 @@ function App() {
 
   return (
     <Layout className="layout">
-      <Header style={{ background: '#fff', padding: '0 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-          <Menu
-            theme="light"
-            mode="horizontal"
-            selectedKeys={[currentPage]}
-            items={menuItems}
-            onClick={({ key }) => {
-              if (key === 'expenses') {
-                navigate('/expenses'); // Use navigate instead of window.location.href
-              } else if (key === 'dashboard') {
-                navigate('/dashboard'); // Use navigate instead of window.location.href
-              }
-            }}
-            style={{ flex: 1, borderBottom: 'none' }}
-          />
-          {user && (
-            <Space>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {user.photoURL ? (
-                  <img
-                    src={user.photoURL}
-                    alt="User"
-                    style={{ width: '32px', height: '32px', borderRadius: '50%' }}
-                  />
-                ) : (
-                  <UserOutlined style={{ fontSize: '18px', color: 'black' }} />
-                )}
-                <span style={{ color: 'black',fontWeight: "bold" }}>
-                  {user.displayName || formatEmail(user.email)}
+      {/* Conditionally render the Header */}
+      {location.pathname !== '/signup' && location.pathname !== '/signin' && (
+        <Header style={{ background: '#fff', padding: '0 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <Menu
+              theme="light"
+              mode="horizontal"
+              selectedKeys={[currentPage]}
+              items={menuItems}
+              onClick={({ key }) => {
+                if (key === 'expenses') {
+                  navigate('/expenses'); // Use navigate instead of window.location.href
+                } else if (key === 'dashboard') {
+                  navigate('/dashboard'); // Use navigate instead of window.location.href
+                }
+              }}
+              style={{ flex: 1, borderBottom: 'none' }}
+            />
+            {user && (
+              <Space>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {user.photoURL ? (
+                    <img
+                      src={user.photoURL}
+                      alt="User"
+                      style={{ width: '32px', height: '32px', borderRadius: '50%' }}
+                    />
+                  ) : (
+                    <UserOutlined style={{ fontSize: '18px', color: 'black' }} />
+                  )}
+                  <span style={{ color: 'black',fontWeight: "bold" }}>
+                    {user.displayName || formatEmail(user.email)}
+                  </span>
                 </span>
-              </span>
-              <Button type="primary" danger onClick={handleLogout} style={{ border: "none", marginLeft: "20px" }}>
-                Logout
-              </Button>
-            </Space>
-          )}
-        </div>
-      </Header>
+                <Button type="primary" danger onClick={handleLogout} style={{ border: "none" }}>
+                  Logout
+                </Button>
+              </Space>
+            )}
+          </div>
+        </Header>
+      )}
       <Content style={{ padding: '24px' }}>
         <Routes>
           <Route path="/signup" element={<Signup />} />

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button, Form, Input, message } from 'antd';
 import { createUserWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../firebase';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { GoogleOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 
@@ -14,10 +14,10 @@ function Signup() {
     setLoading(true);
     try {
       await createUserWithEmailAndPassword(auth, values.email, values.password);
-      message.success('Signup successful!');
-      navigate('/'); // Redirect to the main app
+      message.success('Signed up successfully!');
+      navigate('/dashboard'); // Redirect to the Dashboard page
     } catch (error) {
-      message.error(error.message);
+      message.error('Failed to sign up: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -26,10 +26,10 @@ function Signup() {
   const handleGoogleSignIn = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
-      message.success('Google Sign-In successful!');
-      navigate('/expenses'); // Redirect to the main app
+      message.success('Signed in with Google successfully!');
+      navigate('/dashboard'); // Redirect to the Dashboard page
     } catch (error) {
-      message.error(error.message);
+      message.error('Failed to sign in with Google: ' + error.message);
     }
   };
 
@@ -69,7 +69,7 @@ function Signup() {
         Sign Up with Google
       </Button>
       <div style={{ textAlign: 'center', marginTop: '16px' }}>
-        Already have an account? <Link to="/signin">Sign In</Link>
+        Already have an account? <a href="/signin">Sign In</a>
       </div>
     </motion.div>
   );

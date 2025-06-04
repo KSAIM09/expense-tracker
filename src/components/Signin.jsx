@@ -13,23 +13,11 @@ function Signin() {
   const onFinish = async (values) => {
     setLoading(true);
     try {
-      const { email, password } = values;
-      if (!email || !password) {
-        throw new Error('Email and password are required.');
-      }
-
-      await signInWithEmailAndPassword(auth, email, password);
-      message.success('Signin successful!');
-      navigate('/'); // Redirect to the main app
+      await signInWithEmailAndPassword(auth, values.email, values.password);
+      message.success('Signed in successfully!');
+      navigate('/dashboard'); // Redirect to the Dashboard page
     } catch (error) {
-      console.error('Signin error:', error);
-      if (error.code === 'auth/user-not-found') {
-        message.error('User not found. Please sign up first.');
-      } else if (error.code === 'auth/wrong-password') {
-        message.error('Incorrect password. Please try again.');
-      } else {
-        message.error('Failed to sign in. Please try again.');
-      }
+      message.error('Failed to sign in: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -38,11 +26,10 @@ function Signin() {
   const handleGoogleSignIn = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
-      message.success('Google Sign-In successful!');
-      navigate('/'); // Redirect to the main app
+      message.success('Signed in with Google successfully!');
+      navigate('/dashboard'); // Redirect to the Dashboard page
     } catch (error) {
-      console.error('Google Sign-In error:', error);
-      message.error(error.message || 'Failed to sign in with Google.');
+      message.error('Failed to sign in with Google: ' + error.message);
     }
   };
 
