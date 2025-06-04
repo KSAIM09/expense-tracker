@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Layout, Menu, Button, Space } from 'antd';
+import { UserOutlined } from '@ant-design/icons';
 import './index.css';
 import ExpenseForm from './components/ExpenseForm';
 import ExpenseList from './components/ExpenseList';
@@ -27,6 +28,9 @@ function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
+      if (!user && location.pathname !== '/signin' && location.pathname !== '/signup') {
+        navigate('/signin'); // Redirect to sign-in page if not authenticated
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -77,7 +81,7 @@ function App() {
 
   return (
     <Layout className="layout">
-      <Header style={{ background: '#fff', padding: '0 24px' }}>
+      <Header style={{ background: '#fff', padding: '0 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
           <Menu
             theme="light"
@@ -95,8 +99,21 @@ function App() {
           />
           {user && (
             <Space>
-              <span style={{ color: 'white', backgroundColor: "black", padding: "8px 16px", borderRadius: "10px", fontWeight: "bold" }}>{user.displayName || formatEmail(user.email)}</span>
-              <Button type="primary" danger onClick={handleLogout} style={{ border: "none" }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {user.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt="User"
+                    style={{ width: '32px', height: '32px', borderRadius: '50%' }}
+                  />
+                ) : (
+                  <UserOutlined style={{ fontSize: '18px', color: 'black' }} />
+                )}
+                <span style={{ color: 'black',fontWeight: "bold" }}>
+                  {user.displayName || formatEmail(user.email)}
+                </span>
+              </span>
+              <Button type="primary" danger onClick={handleLogout} style={{ border: "none", marginLeft: "20px" }}>
                 Logout
               </Button>
             </Space>

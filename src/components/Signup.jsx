@@ -27,7 +27,7 @@ function Signup() {
     try {
       await signInWithPopup(auth, googleProvider);
       message.success('Google Sign-In successful!');
-      navigate('/'); // Redirect to the main app
+      navigate('/expenses'); // Redirect to the main app
     } catch (error) {
       message.error(error.message);
     }
@@ -46,7 +46,7 @@ function Signup() {
           name="email"
           rules={[{ required: true, message: 'Please input your email!' }]}
         >
-          <Input placeholder="Email" style={{ height: '40px' }} />
+          <Input placeholder="Email" style={{ height: '40px', padding: '8px 12px' }} />
         </Form.Item>
         <Form.Item
           name="password"
@@ -55,7 +55,7 @@ function Signup() {
           <Input.Password placeholder="Password" style={{ height: '40px' }} />
         </Form.Item>
         <Form.Item>
-          <Button type="primary" htmlType="submit" loading={loading} block>
+          <Button type="primary" htmlType="submit" loading={loading} block style={{ height: '48px' }}>
             Sign Up
           </Button>
         </Form.Item>
@@ -64,7 +64,7 @@ function Signup() {
         type="default"
         icon={<GoogleOutlined />}
         onClick={handleGoogleSignIn}
-        style={{ width: '100%', marginTop: '12px' }}
+        style={{ width: '100%', height: '48px', marginTop: '-10px' }}
       >
         Sign Up with Google
       </Button>
