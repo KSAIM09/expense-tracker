@@ -69,10 +69,13 @@ function App() {
     }
   };
 
-  // Function to format the user email
-  const formatEmail = (email) => {
-    return email ? email.split('@')[0] : ''; // Remove everything after '@'
+  // Function to capitalize the first letter of the user's name
+  const capitalizeFirstLetter = (str) => {
+    return str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
   };
+
+  // Get the user's name or email (with the first character capitalized)
+  const userName = capitalizeFirstLetter(user?.displayName || user?.email?.split('@')[0]);
 
   const menuItems = [
     { key: 'expenses', label: 'Expenses' },
@@ -101,7 +104,7 @@ function App() {
             />
             {user && (
               <Space>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                   {user.photoURL ? (
                     <img
                       src={user.photoURL}
@@ -112,7 +115,7 @@ function App() {
                     <UserOutlined style={{ fontSize: '18px', color: 'black' }} />
                   )}
                   <span style={{ color: 'black',fontWeight: "bold" }}>
-                    {user.displayName || formatEmail(user.email)}
+                    {userName}
                   </span>
                 </span>
                 <Button type="primary" danger onClick={handleLogout} style={{ border: "none" }}>

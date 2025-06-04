@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { ref, onValue, remove } from 'firebase/database';
 import { db, auth } from '../firebase';
-import { DatePicker, Row, Col, Button } from 'antd';
+import { DatePicker, Row, Col, Button, message, Popconfirm } from 'antd';
 import ExpenseItem from './ExpenseItem';
 import { motion, AnimatePresence } from 'framer-motion';
+import { DeleteOutlined } from '@ant-design/icons';
 
 function ExpenseList() {
   const [expenses, setExpenses] = useState([]);
@@ -13,20 +14,32 @@ function ExpenseList() {
 
   useEffect(() => {
     const user = auth.currentUser;
-    if (!user) return;
+    if (!user) {
+      console.error('User is not authenticated.');
+      return;
+    }
 
-    // Fetch expenses for the logged-in user
     const expensesRef = ref(db, `expenses/${user.uid}`);
     onValue(expensesRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const expensesArray = Object.keys(data).map((key) => ({
-          id: key,
-          ...data[key],
-        }));
+        console.log('Fetched data:', data); // Log the fetched data
+        const expensesArray = [];
+        Object.keys(data).forEach((date) => {
+          if (typeof data[date] === 'object') { // Ensure it's a date node
+            Object.keys(data[date]).forEach((expenseId) => {
+              expensesArray.push({
+                id: expenseId,
+                date,
+                ...data[date][expenseId],
+              });
+            });
+          }
+        });
         setExpenses(expensesArray);
         filterExpensesByDate(expensesArray, selectedDate);
       } else {
+        console.log('No data found.');
         setExpenses([]);
         setFilteredExpenses([]);
       }
@@ -48,19 +61,22 @@ function ExpenseList() {
   };
 
   // Function to delete a single expense
-  const handleDeleteExpense = (expenseId) => {
-    const user = auth.currentUser;
-    if (!user) return;
+  const handleDeleteExpense = async (expenseId, date) => {
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        message.error('You must be logged in to delete expenses.');
+        return;
+      }
 
-    remove(ref(db, `expenses/${user.uid}/${expenseId}`))
-      .then(() => {
-        console.log('Expense deleted successfully!');
-        setExpenses((prevExpenses) => prevExpenses.filter((expense) => expense.id !== expenseId));
-        setFilteredExpenses((prevFiltered) => prevFiltered.filter((expense) => expense.id !== expenseId));
-      })
-      .catch((error) => {
-        console.error('Error deleting expense: ', error);
-      });
+      // Ensure the expenseRef points to the specific expense under the date node
+      const expenseRef = ref(db, `expenses/${user.uid}/${date}/${expenseId}`);
+      await remove(expenseRef); // Delete the specific expense
+      message.success('Expense deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting expense:', error);
+      message.error('Failed to delete expense. Please try again.');
+    }
   };
 
   // Function to load more expenses
@@ -101,7 +117,11 @@ function ExpenseList() {
       </AnimatePresence>
       {filteredExpenses.length > visibleCount && (
         <div style={{ textAlign: 'center', marginTop: '16px' }}>
-          <Button type="primary" onClick={handleLoadMore}>
+          <Button
+            type="primary"
+            onClick={handleLoadMore}
+            style={{ width: '100%', color: '#fff' }}
+          >
             Load More
           </Button>
         </div>

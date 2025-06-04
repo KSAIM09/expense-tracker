@@ -25,6 +25,10 @@ function ExpenseItem({ expense, onDeleteExpense }) {
         onConfirm={() => onDeleteExpense(expense.id)}
         okText="Yes"
         cancelText="No"
+        placement="top"
+        overlayStyle={{ maxWidth: '200px', wordWrap: 'break-word', textAlign: 'center' }}
+        okButtonProps={{ style: { width: '80px', marginRight: '8px', color: "white" } }}
+        cancelButtonProps={{ style: { width: '80px', color: "white" } }}
       >
         <Button
           type="text"
