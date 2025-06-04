@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Input, Button, message } from 'antd';
 import { PlusCircleOutlined } from '@ant-design/icons';
 import { ref, push } from 'firebase/database';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 
 function ExpenseForm({ onAddExpense }) {
   const [title, setTitle] = useState('');
@@ -18,8 +18,14 @@ function ExpenseForm({ onAddExpense }) {
       date, // Include the date field
     };
 
-    // Add expense to Realtime Database
-    push(ref(db, 'expenses'), expense)
+    const user = auth.currentUser;
+    if (!user) {
+      message.error('You must be logged in to add an expense.');
+      return;
+    }
+
+    // Add expense to the user's node in Firebase
+    push(ref(db, `expenses/${user.uid}`), expense)
       .then(() => {
         onAddExpense(expense); // Call the function passed from the parent
         setTitle('');

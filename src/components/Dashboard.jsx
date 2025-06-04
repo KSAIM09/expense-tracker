@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Table, Button, Popconfirm, message, Space, Modal, Form, Input, DatePicker } from 'antd';
 import { CloseCircleOutlined, DeleteOutlined, EyeOutlined, EditOutlined } from '@ant-design/icons';
 import { ref, onValue, remove, update } from 'firebase/database';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { motion, AnimatePresence } from 'framer-motion';
 import moment from 'moment';
 
@@ -15,8 +15,11 @@ function Dashboard() {
   const [form] = Form.useForm();
 
   useEffect(() => {
-    // Fetch expenses from Realtime Database
-    const expensesRef = ref(db, 'expenses');
+    const user = auth.currentUser;
+    if (!user) return;
+
+    // Fetch expenses for the logged-in user
+    const expensesRef = ref(db, `expenses/${user.uid}`);
     onValue(expensesRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -166,6 +169,22 @@ function Dashboard() {
         columns={columns}
         pagination={false}
         style={{ marginBottom: '16px', overflowX: 'auto' }}
+        rowKey="key"
+        components={{
+          body: {
+            row: ({ children, ...props }) => (
+              <motion.tr
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+                {...props}
+              >
+                {children}
+              </motion.tr>
+            ),
+          },
+        }}
       />
 
       <AnimatePresence mode="wait">

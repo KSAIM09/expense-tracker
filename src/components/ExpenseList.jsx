@@ -1,18 +1,22 @@
 import { useEffect, useState } from 'react';
 import { ref, onValue, remove } from 'firebase/database';
-import { db } from '../firebase';
-import { DatePicker, Row, Col } from 'antd';
+import { db, auth } from '../firebase';
+import { DatePicker, Row, Col, Button } from 'antd';
 import ExpenseItem from './ExpenseItem';
+import { motion, AnimatePresence } from 'framer-motion';
 
 function ExpenseList() {
   const [expenses, setExpenses] = useState([]);
   const [filteredExpenses, setFilteredExpenses] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
+  const [visibleCount, setVisibleCount] = useState(3); // Show 3 expenses initially
 
   useEffect(() => {
-    console.log('db:', db); // Add this line before using `db`
-    // Fetch expenses from Realtime Database
-    const expensesRef = ref(db, 'expenses');
+    const user = auth.currentUser;
+    if (!user) return;
+
+    // Fetch expenses for the logged-in user
+    const expensesRef = ref(db, `expenses/${user.uid}`);
     onValue(expensesRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -45,16 +49,23 @@ function ExpenseList() {
 
   // Function to delete a single expense
   const handleDeleteExpense = (expenseId) => {
-    remove(ref(db, `expenses/${expenseId}`))
+    const user = auth.currentUser;
+    if (!user) return;
+
+    remove(ref(db, `expenses/${user.uid}/${expenseId}`))
       .then(() => {
         console.log('Expense deleted successfully!');
-        // Update the local state to remove the deleted expense
         setExpenses((prevExpenses) => prevExpenses.filter((expense) => expense.id !== expenseId));
         setFilteredExpenses((prevFiltered) => prevFiltered.filter((expense) => expense.id !== expenseId));
       })
       .catch((error) => {
         console.error('Error deleting expense: ', error);
       });
+  };
+
+  // Function to load more expenses
+  const handleLoadMore = () => {
+    setVisibleCount((prevCount) => prevCount + 5); // Load 5 more expenses
   };
 
   return (
@@ -72,13 +83,29 @@ function ExpenseList() {
           />
         </Col>
       </Row>
-      {filteredExpenses.map((expense) => (
-        <ExpenseItem
-          key={expense.id}
-          expense={expense}
-          onDeleteExpense={handleDeleteExpense}
-        />
-      ))}
+      <AnimatePresence>
+        {filteredExpenses.slice(0, visibleCount).map((expense, index) => (
+          <motion.div
+            key={expense.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ delay: index * 0.1, duration: 0.3 }}
+          >
+            <ExpenseItem
+              expense={expense}
+              onDeleteExpense={handleDeleteExpense}
+            />
+          </motion.div>
+        ))}
+      </AnimatePresence>
+      {filteredExpenses.length > visibleCount && (
+        <div style={{ textAlign: 'center', marginTop: '16px' }}>
+          <Button type="primary" onClick={handleLoadMore}>
+            Load More
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

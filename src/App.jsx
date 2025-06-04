@@ -1,18 +1,73 @@
-import { useState } from 'react';
-import { Layout, Menu, Row, Col } from 'antd';
+import { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Layout, Menu, Button, Space } from 'antd';
 import './index.css';
 import ExpenseForm from './components/ExpenseForm';
 import ExpenseList from './components/ExpenseList';
 import Dashboard from './components/Dashboard';
+import Signup from './components/Signup';
+import Signin from './components/Signin';
+import { auth } from './firebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { message } from 'antd';
+import { ref, onValue } from 'firebase/database';
+import { db } from './firebase';
 
 const { Header, Content } = Layout;
 
 function App() {
-  const [currentPage, setCurrentPage] = useState('expenses');
   const [expenses, setExpenses] = useState([]);
+  const [user, setUser] = useState(null);
+  const location = useLocation(); // Get the current location
+  const navigate = useNavigate(); // Use for navigation
+
+  // Set the current page based on the route
+  const currentPage = location.pathname === '/expenses' ? 'expenses' : 'dashboard';
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    // Fetch expenses for the logged-in user
+    const expensesRef = ref(db, `expenses/${user.uid}`);
+    onValue(expensesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const expensesArray = Object.keys(data).map((key) => ({
+          id: key,
+          ...data[key],
+        }));
+        setExpenses(expensesArray);
+      } else {
+        setExpenses([]);
+      }
+    });
+  }, []);
 
   const handleAddExpense = (newExpense) => {
     setExpenses([...expenses, newExpense]);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      message.success('Logged out successfully!');
+      navigate('/signin'); // Redirect to signin page after logout
+    } catch (error) {
+      message.error(error.message);
+    }
+  };
+
+  // Function to format the user email
+  const formatEmail = (email) => {
+    return email ? email.split('@')[0] : ''; // Remove everything after '@'
   };
 
   const menuItems = [
@@ -22,30 +77,65 @@ function App() {
 
   return (
     <Layout className="layout">
-      <Header>
-        <Menu
-          theme="light"
-          mode="horizontal"
-          selectedKeys={[currentPage]}
-          onSelect={({ key }) => setCurrentPage(key)}
-          items={menuItems}
-        />
+      <Header style={{ background: '#fff', padding: '0 24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          <Menu
+            theme="light"
+            mode="horizontal"
+            selectedKeys={[currentPage]}
+            items={menuItems}
+            onClick={({ key }) => {
+              if (key === 'expenses') {
+                navigate('/expenses'); // Use navigate instead of window.location.href
+              } else if (key === 'dashboard') {
+                navigate('/dashboard'); // Use navigate instead of window.location.href
+              }
+            }}
+            style={{ flex: 1, borderBottom: 'none' }}
+          />
+          {user && (
+            <Space>
+              <span style={{ color: 'white', backgroundColor: "black", padding: "8px 16px", borderRadius: "10px", fontWeight: "bold" }}>{user.displayName || formatEmail(user.email)}</span>
+              <Button type="primary" danger onClick={handleLogout} style={{ border: "none" }}>
+                Logout
+              </Button>
+            </Space>
+          )}
+        </div>
       </Header>
       <Content style={{ padding: '24px' }}>
-        <Row justify="center">
-          <Col xs={24} sm={20} md={16} lg={12}>
-            {currentPage === 'expenses' && (
+        <Routes>
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/signin" element={<Signin />} />
+          <Route
+            path="/"
+            element={user ? <Navigate to="/expenses" /> : <Navigate to="/signin" />}
+          />
+          <Route
+            path="/expenses"
+            element={user ? (
               <>
                 <ExpenseForm onAddExpense={handleAddExpense} />
                 <ExpenseList expenses={expenses} />
               </>
-            )}
-            {currentPage === 'dashboard' && <Dashboard />}
-          </Col>
-        </Row>
+            ) : <Navigate to="/signin" />}
+          />
+          <Route
+            path="/dashboard"
+            element={user ? <Dashboard /> : <Navigate to="/signin" />}
+          />
+        </Routes>
       </Content>
     </Layout>
   );
 }
 
-export default App; 
+function AppWrapper() {
+  return (
+    <Router>
+      <App />
+    </Router>
+  );
+}
+
+export default AppWrapper; 
