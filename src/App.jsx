@@ -14,6 +14,7 @@ import { message } from 'antd';
 import { ref, onValue } from 'firebase/database';
 import { db } from './firebase';
 
+
 const { Header, Content } = Layout;
 
 function App() {
@@ -21,39 +22,43 @@ function App() {
   const [user, setUser] = useState(null);
   const location = useLocation(); // Get the current location
   const navigate = useNavigate(); // Use for navigation
+  const [initializing, setInitializing] = useState(true);
 
   // Set the current page based on the route
   const currentPage = location.pathname === '/expenses' ? 'expenses' : 'dashboard';
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      if (!user && location.pathname !== '/signin' && location.pathname !== '/signup') {
-        navigate('/signin'); // Redirect to sign-in page if not authenticated
-      }
-    });
-    return () => unsubscribe();
-  }, [location, navigate]);
+  const unsubscribe = onAuthStateChanged(auth, (user) => {
+    setUser(user);
+    setInitializing(false); // ✅ done loading
+    if (!user && location.pathname !== '/signin' && location.pathname !== '/signup') {
+      navigate('/signin');
+    }
+  });
+  return () => unsubscribe();
+}, [location, navigate]);
+
 
   useEffect(() => {
-    const user = auth.currentUser;
-    if (!user) return;
+  if (!user) return; // 🔒 Only fetch if user is logged in
 
-    // Fetch expenses for the logged-in user
-    const expensesRef = ref(db, `expenses/${user.uid}`);
-    onValue(expensesRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const expensesArray = Object.keys(data).map((key) => ({
-          id: key,
-          ...data[key],
-        }));
-        setExpenses(expensesArray);
-      } else {
-        setExpenses([]);
-      }
-    });
-  }, []);
+  const expensesRef = ref(db, `expenses/${user.uid}`);
+  const unsubscribe = onValue(expensesRef, (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      const expensesArray = Object.keys(data).map((key) => ({
+        id: key,
+        ...data[key],
+      }));
+      setExpenses(expensesArray);
+    } else {
+      setExpenses([]);
+    }
+  });
+
+  return () => unsubscribe(); // 🔄 Clean up listener when user/logs out or component unmounts
+}, [user]); // 👈 Dependency array includes user
+
 
   const handleAddExpense = (newExpense) => {
     setExpenses([...expenses, newExpense]);
