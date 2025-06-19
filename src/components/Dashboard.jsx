@@ -52,6 +52,11 @@ function Dashboard() {
 
   // Fetch expenses from Firebase
   useEffect(() => {
+    if (!auth.currentUser) {
+      setExpenses([]);
+      setGroupedExpenses({});
+      return;
+    }
     const expensesRef = ref(db, `expenses/${auth.currentUser.uid}`);
     const unsubscribe = onValue(expensesRef, (snapshot) => {
       const data = snapshot.val();
@@ -79,7 +84,7 @@ function Dashboard() {
 
     // Cleanup the listener on unmount
     return () => unsubscribe();
-  }, []);
+  }, [auth.currentUser]);
 
   // Group expenses by date
   const groupExpensesByDate = (expenses) => {
@@ -111,6 +116,12 @@ function Dashboard() {
 
   // Colors for the pie chart
   const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#AF19FF"];
+
+  // Calculate total spent in the current month
+  const currentMonth = moment().format('YYYY-MM');
+  const monthlyTotal = expenses
+    .filter(exp => exp.date && exp.date.startsWith(currentMonth))
+    .reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
 
   const handleShowExpenses = (date) => {
     setSelectedDate(date);
@@ -237,17 +248,19 @@ function Dashboard() {
   ];
 
   // Prepare data for the table
-  const dataSource = Object.keys(groupedExpenses).map((date) => {
-    const totalAmount = groupedExpenses[date].reduce(
-      (sum, expense) => sum + parseFloat(expense.amount),
-      0
-    );
-    return {
-      key: date,
-      date,
-      totalAmount: `₹${totalAmount.toFixed(2)}`,
-    };
-  });
+  const dataSource = Object.keys(groupedExpenses)
+    .sort((a, b) => new Date(b) - new Date(a)) // Sort by date descending
+    .map((date) => {
+      const totalAmount = groupedExpenses[date].reduce(
+        (sum, expense) => sum + parseFloat(expense.amount),
+        0
+      );
+      return {
+        key: date,
+        date,
+        totalAmount: `₹${totalAmount.toFixed(2)}`,
+      };
+    });
 
   return (
     <div
@@ -261,6 +274,22 @@ function Dashboard() {
       }}
     >
       <h1 style={{ marginBottom: "24px" }}>Welcome, {userName}</h1>
+
+      {/* Monthly Total Box */}
+      <div style={{
+        margin: "0 auto 24px auto",
+        padding: "24px 0",
+        background: "#e6f7ff",
+        borderRadius: "10px",
+        fontSize: "2rem",
+        fontWeight: 700,
+        color: "#1890ff",
+        boxShadow: "0 2px 8px rgba(24,144,255,0.08)",
+        maxWidth: 400,
+        textAlign: "center"
+      }}>
+        Total Spent This Month: ₹{monthlyTotal.toFixed(2)}
+      </div>
 
       {/* Pie Chart for Expense Categories */}
       <div style={{ marginBottom: "24px" }}>
@@ -295,8 +324,14 @@ function Dashboard() {
         dataSource={dataSource}
         columns={columns}
         rowKey="key"
-        pagination={{ pageSize: 5 }}
+        pagination={{ pageSize: 5, position: ["bottomRight"] }}
+        scroll={false}
       />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+        <div style={{ color: '#888', fontWeight: 500, marginBottom: "20px" }}>
+          Total Days: {dataSource.length}
+        </div>
+      </div>
 
       <AnimatePresence mode="wait">
         {selectedDate && groupedExpenses[selectedDate] && (
@@ -342,7 +377,7 @@ function Dashboard() {
               }}
             >
               <h3 style={{ margin: 0, fontWeight: 600, fontSize: 20 }}>
-                Expenses for {selectedDate}
+                Expenses for <span style={{ color: "#178fff", marginLeft: "20px", fontWeight: "900"}}>{moment(selectedDate, 'YYYY-MM-DD').format('D MMMM')}</span>
               </h3>
               <Popconfirm
                 title="Delete all expenses for this day?"

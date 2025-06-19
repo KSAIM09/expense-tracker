@@ -20,6 +20,9 @@ function ExpenseItem({ expense, onDeleteExpense }) {
         <div style={{ fontWeight: 500 }}>{expense.title}</div>
         <div style={{ color: '#1890ff', fontWeight: 600 }}>₹{expense.amount}</div>
       </div>
+      <div style={{ minWidth: 100, textAlign: 'center', color: '#888', fontWeight: 500 }}>
+        {expense.date}
+      </div>
       <Popconfirm
         title="Delete this expense?"
         onConfirm={() => onDeleteExpense(expense.id)}

@@ -36,6 +36,8 @@ function ExpenseList() {
             });
           }
         });
+        // Sort by date descending, then by id (if needed)
+        expensesArray.sort((a, b) => new Date(b.date) - new Date(a.date));
         setExpenses(expensesArray);
         filterExpensesByDate(expensesArray, selectedDate);
       } else {
@@ -49,9 +51,13 @@ function ExpenseList() {
   const filterExpensesByDate = (expenses, date) => {
     if (date) {
       const filtered = expenses.filter((expense) => expense.date === date.format('YYYY-MM-DD'));
+      // Sort filtered by date descending
+      filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
       setFilteredExpenses(filtered);
     } else {
-      setFilteredExpenses(expenses);
+      // Sort all by date descending
+      const sorted = [...expenses].sort((a, b) => new Date(b.date) - new Date(a.date));
+      setFilteredExpenses(sorted);
     }
   };
 
