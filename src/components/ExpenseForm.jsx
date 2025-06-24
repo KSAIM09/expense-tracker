@@ -1,45 +1,50 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Input, Button, message, DatePicker, Select, Form } from 'antd';
+import { Input, Button, DatePicker, Select, Form } from 'antd';
 import { PlusCircleOutlined } from '@ant-design/icons';
 import { ref, push, get, onValue } from 'firebase/database';
 import { db, auth } from '../firebase';
+import { toast } from 'react-toastify';
 
 function ExpenseForm({ onAddExpense }) {
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
-  const [visibleExpenses, setVisibleExpenses] = useState(3); // State to control visible expenses
   const [expenses, setExpenses] = useState([]); // State to store fetched expenses
+  const [budgets, setBudgets] = useState(null);
 
-  // Fetch expenses from Firebase
+  // Fetch expenses and budgets from Firebase
   useEffect(() => {
     const user = auth.currentUser;
     if (!user) return;
 
+    // Fetch expenses
     const expensesRef = ref(db, `expenses/${user.uid}`);
-    const unsubscribe = onValue(expensesRef, (snapshot) => {
+    const unsubscribeExpenses = onValue(expensesRef, (snapshot) => {
       const data = snapshot.val();
+      const expenseList = [];
       if (data) {
-        const expenseList = [];
         Object.keys(data).forEach((date) => {
-          if (typeof data[date] === 'object') { // Ensure it's a date node
+          if (typeof data[date] === 'object') {
             Object.keys(data[date]).forEach((expenseId) => {
-              expenseList.push({
-                id: expenseId,
-                date,
-                ...data[date][expenseId],
-              });
+              expenseList.push({ ...data[date][expenseId], id: expenseId, date });
             });
           }
         });
-        setExpenses(expenseList);
-      } else {
-        setExpenses([]);
       }
+      setExpenses(expenseList);
     });
 
-    // Cleanup the listener on unmount
-    return () => unsubscribe();
+    // Fetch budgets
+    const budgetRef = ref(db, `budgets/${user.uid}`);
+    const unsubscribeBudgets = onValue(budgetRef, (snapshot) => {
+      setBudgets(snapshot.val());
+    });
+
+    // Cleanup the listeners on unmount
+    return () => {
+      unsubscribeExpenses();
+      unsubscribeBudgets();
+    };
   }, []);
 
   const onFinish = async (values) => {
@@ -47,39 +52,54 @@ function ExpenseForm({ onAddExpense }) {
     try {
       const user = auth.currentUser;
       if (!user) {
-        message.error('You must be logged in to add an expense.');
+        toast.error('You must be logged in to add an expense.');
         return;
       }
 
       const { title, amount, category, date } = values;
-      const formattedDate = date.format('YYYY-MM-DD'); // Format the date
-      const dateRef = ref(db, `expenses/${user.uid}/${formattedDate}`);
-
-      // Check if the date node exists
-      const snapshot = await get(dateRef);
-      if (!snapshot.exists()) {
-        // If the date node doesn't exist, create it
-        await push(dateRef, {}); // Initialize the date node
-      }
-
-      // Add the expense under the date node
+      const formattedDate = date.format('YYYY-MM-DD');
       const expenseRef = ref(db, `expenses/${user.uid}/${formattedDate}`);
-      await push(expenseRef, { title, amount, category });
+      
+      await push(expenseRef, { title, amount: parseFloat(amount), category });
 
       onAddExpense({ title, amount, category, date: formattedDate });
-      form.resetFields(); // Reset the form fields after submission
-      message.success('Expense added successfully!', 3);
+      form.resetFields();
+      toast.success('Expense added successfully!');
+
+      // Check budget alerts
+      if (budgets) {
+        const newAmount = parseFloat(amount);
+        const totalSpent = expenses.reduce((sum, exp) => sum + exp.amount, 0) + newAmount;
+
+        // Overall budget check
+        if (budgets.overall && parseFloat(budgets.overall) > 0) {
+          const overallBudget = parseFloat(budgets.overall);
+          if (totalSpent >= overallBudget) {
+            toast.error(`You've exceeded your overall budget of ₹${overallBudget}!`, { autoClose: 5000 });
+          } else if (totalSpent >= overallBudget * 0.9) {
+            toast.warn(`You've used over 90% of your overall budget!`, { autoClose: 5000 });
+          }
+        }
+
+        // Category budget check
+        if (budgets[category] && parseFloat(budgets[category]) > 0) {
+          const categoryTotal = expenses
+            .filter(exp => exp.category === category)
+            .reduce((sum, exp) => sum + exp.amount, 0) + newAmount;
+          const categoryBudget = parseFloat(budgets[category]);
+          if (categoryTotal >= categoryBudget) {
+            toast.error(`You've exceeded your ${category} budget of ₹${categoryBudget}!`, { autoClose: 5000 });
+          } else if (categoryTotal >= categoryBudget * 0.9) {
+            toast.warn(`You've used over 90% of your ${category} budget!`, { autoClose: 5000 });
+          }
+        }
+      }
     } catch (error) {
       console.error('Error adding expense: ', error);
-      message.error('Failed to add expense: ' + error.message, 3);
+      toast.error('Failed to add expense: ' + error.message);
     } finally {
       setLoading(false);
     }
-  };
-
-  // Function to handle "Load More" button click
-  const handleLoadMore = () => {
-    setVisibleExpenses((prev) => prev + 5); // Increase visible expenses by 5
   };
 
   return (

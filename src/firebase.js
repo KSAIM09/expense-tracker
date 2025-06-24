@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyD-wV380lLMXRSSata-9i3gYgDVmtzy37g',
@@ -17,5 +17,8 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
+
+// Ensure auth state persists across refreshes
+setPersistence(auth, browserLocalPersistence);
 
 export { db, auth, googleProvider }; 

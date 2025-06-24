@@ -5,6 +5,7 @@ import { auth, googleProvider } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import { GoogleOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
+import { toast } from 'react-toastify';
 
 function Signup() {
   const [loading, setLoading] = useState(false);
@@ -14,10 +15,10 @@ function Signup() {
     setLoading(true);
     try {
       await createUserWithEmailAndPassword(auth, values.email, values.password);
-      message.success('Signed up successfully!');
+      toast.success('Signed up successfully!');
       navigate('/dashboard'); // Redirect to the Dashboard page
     } catch (error) {
-      message.error('Failed to sign up: ' + error.message);
+      toast.error('Failed to sign up: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -26,10 +27,10 @@ function Signup() {
   const handleGoogleSignIn = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
-      message.success('Signed in with Google successfully!');
+      toast.success('Signed in with Google successfully!');
       navigate('/dashboard'); // Redirect to the Dashboard page
     } catch (error) {
-      message.error('Failed to sign in with Google: ' + error.message);
+      toast.error('Failed to sign in with Google: ' + error.message);
     }
   };
 

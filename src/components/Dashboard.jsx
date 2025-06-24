@@ -10,6 +10,7 @@ import {
   Input,
   DatePicker,
   Select,
+  Progress,
 } from "antd";
 import {
   CloseCircleOutlined,
@@ -29,6 +30,9 @@ import {
   Legend,
   Tooltip,
 } from "recharts";
+import ReactDatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import { toast } from "react-toastify";
 
 function Dashboard() {
   const [expenses, setExpenses] = useState([]);
@@ -37,6 +41,13 @@ function Dashboard() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [form] = Form.useForm();
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(moment());
+  const [budgetModalVisible, setBudgetModalVisible] = useState(false);
+  const [budgets, setBudgets] = useState({ overall: '', Food: '', Transport: '', Entertainment: '', Utilities: '', Others: '' });
+  const [budgetLoading, setBudgetLoading] = useState(false);
+  const [showBudgets, setShowBudgets] = useState(false);
 
   const user = auth.currentUser;
 
@@ -52,39 +63,48 @@ function Dashboard() {
 
   // Fetch expenses from Firebase
   useEffect(() => {
-    if (!auth.currentUser) {
+    if (!user) {
       setExpenses([]);
       setGroupedExpenses({});
       return;
     }
-    const expensesRef = ref(db, `expenses/${auth.currentUser.uid}`);
-    const unsubscribe = onValue(expensesRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const expenseList = [];
-        Object.keys(data).forEach((date) => {
-          if (typeof data[date] === "object") {
-            // Ensure it's a date node
-            Object.keys(data[date]).forEach((expenseId) => {
-              expenseList.push({
-                id: expenseId,
-                date,
-                ...data[date][expenseId],
+    const expensesRef = ref(db, `expenses/${user.uid}`);
+    const unsubscribe = onValue(
+      expensesRef,
+      (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          const expensesArray = [];
+          Object.keys(data).forEach((date) => {
+            if (typeof data[date] === "object") {
+              // Ensure it's a date node
+              Object.keys(data[date]).forEach((expenseId) => {
+                expensesArray.push({
+                  id: expenseId,
+                  date,
+                  ...data[date][expenseId],
+                });
               });
-            });
-          }
-        });
-        setExpenses(expenseList);
-        groupExpensesByDate(expenseList); // Group expenses by date
-      } else {
-        setExpenses([]);
-        setGroupedExpenses({});
+            }
+          });
+          setExpenses(expensesArray);
+          groupExpensesByDate(expensesArray); // Group expenses by date
+        } else {
+          setExpenses([]);
+          setGroupedExpenses({});
+        }
+      },
+      (error) => {
+        console.error("Error fetching expenses:", error);
+        message.error(
+          "Failed to fetch expenses data. Please try again later."
+        );
       }
-    });
+    );
 
     // Cleanup the listener on unmount
     return () => unsubscribe();
-  }, [auth.currentUser]);
+  }, [user]);
 
   // Group expenses by date
   const groupExpensesByDate = (expenses) => {
@@ -133,7 +153,7 @@ function Dashboard() {
 
   // Delete all expenses for a specific date
   const handleDeleteAllForDate = (date) => {
-    const expensesRef = ref(db, `expenses/${auth.currentUser.uid}/${date}`);
+    const expensesRef = ref(db, `expenses/${user.uid}/${date}`);
     remove(expensesRef)
       .then(() => {
         message.success(`All expenses for ${date} deleted successfully!`);
@@ -147,7 +167,6 @@ function Dashboard() {
   // Delete a single expense
   const handleDeleteExpense = async (expenseId, date) => {
     try {
-      const user = auth.currentUser;
       if (!user) {
         message.error('You must be logged in to delete expenses.');
         return;
@@ -198,7 +217,7 @@ function Dashboard() {
         // Update expense in Firebase
         const expenseRef = ref(
           db,
-          `expenses/${auth.currentUser.uid}/${updatedExpense.date}/${updatedExpense.id}`
+          `expenses/${user.uid}/${updatedExpense.date}/${updatedExpense.id}`
         );
         update(expenseRef, updatedExpense)
           .then(() => {
@@ -216,12 +235,31 @@ function Dashboard() {
       });
   };
 
+  const handleCategoryClick = (data) => {
+    setSelectedCategory(data.name);
+    setIsCategoryModalVisible(true);
+  };
+
+  const handleCategoryModalClose = () => {
+    setIsCategoryModalVisible(false);
+    setSelectedCategory(null);
+    setSelectedMonth(moment());
+  };
+
+  const filteredCategoryExpenses = expenses.filter(expense => {
+    const expenseMonth = moment(expense.date).format('YYYY-MM');
+    const selectedMonthFormatted = selectedMonth.format('YYYY-MM');
+    return expense.category === selectedCategory && expenseMonth === selectedMonthFormatted;
+  });
+
   // Table columns for day-wise expenses
   const columns = [
     {
       title: "Date",
       dataIndex: "date",
       key: "date",
+      sorter: (a, b) => new Date(a.date) - new Date(b.date),
+      defaultSortOrder: 'descend',
     },
     {
       title: "Total Amount",
@@ -262,6 +300,53 @@ function Dashboard() {
       };
     });
 
+  // Fetch budgets from Firebase
+  useEffect(() => {
+    if (!user) return;
+    const budgetRef = ref(db, `budgets/${user.uid}`);
+    onValue(budgetRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) setBudgets({ ...budgets, ...data });
+    });
+    // eslint-disable-next-line
+  }, [user]);
+
+  // Save budgets to Firebase
+  const handleSaveBudgets = async (values) => {
+    if (!user) return;
+    setBudgetLoading(true);
+    try {
+      await set(ref(db, `budgets/${user.uid}`), values);
+      toast.success('Budgets saved!');
+      setBudgetModalVisible(false);
+      setBudgets(values);
+    } catch (e) {
+      toast.error('Failed to save budgets');
+    } finally {
+      setBudgetLoading(false);
+    }
+  };
+
+  // Calculate totals for progress bars
+  const totalSpent = expenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+  const categoryTotals = expenses.reduce((acc, exp) => {
+    acc[exp.category] = (acc[exp.category] || 0) + parseFloat(exp.amount);
+    return acc;
+  }, {});
+
+  // Responsive styles
+  const progressContainerStyle = {
+    marginBottom: 16,
+    padding: '12px',
+    borderRadius: '10px',
+    background: '#f9f9f9',
+    boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+    maxWidth: 500,
+    width: '100%',
+    marginLeft: 'auto',
+    marginRight: 'auto',
+  };
+
   return (
     <div
       style={{
@@ -274,6 +359,18 @@ function Dashboard() {
       }}
     >
       <h1 style={{ marginBottom: "24px" }}>Welcome, {userName}</h1>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: 16 }}>
+        <Button 
+          type="primary" 
+          onClick={() => setBudgetModalVisible(true)} 
+          style={{ color: 'white' }}
+        >
+          Set Budget
+        </Button>
+        <Button onClick={() => setShowBudgets(!showBudgets)}>
+          {showBudgets ? 'Hide Budgets' : 'Show Budgets'}
+        </Button>
+      </div>
 
       {/* Monthly Total Box */}
       <div style={{
@@ -290,6 +387,81 @@ function Dashboard() {
       }}>
         Total Spent This Month: ₹{monthlyTotal.toFixed(2)}
       </div>
+      
+      <AnimatePresence>
+        {showBudgets && (
+          <motion.div
+            initial={{ opacity: 0, height: 0, y: -20 }}
+            animate={{ opacity: 1, height: 'auto', y: 0 }}
+            exit={{ opacity: 0, height: 0, y: -20 }}
+            transition={{ duration: 0.4, ease: 'easeInOut' }}
+            style={{ overflow: 'hidden' }}
+          >
+            {/* Overall Budget Progress */}
+            {budgets.overall && (
+              <div style={progressContainerStyle}>
+                <div style={{ fontWeight: 500, marginBottom: 4 }}>Overall Budget: ₹{budgets.overall}</div>
+                <Progress percent={Math.min(100, ((totalSpent / budgets.overall) * 100).toFixed(0))} status={totalSpent > budgets.overall ? 'exception' : 'active'} />
+                <div style={{ color: totalSpent > budgets.overall ? 'red' : '#1890ff', fontWeight: 600, marginTop: 4 }}>
+                  {totalSpent > budgets.overall ? 'Over budget!' : `₹${totalSpent} / ₹${budgets.overall}`}
+                </div>
+              </div>
+            )}
+            {/* Per-Category Budgets */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
+              {Object.keys(budgets).filter(k => k !== 'overall').map(cat => budgets[cat] && (
+                <div key={cat} style={{ ...progressContainerStyle, minWidth: 220, flex: '1 1 220px' }}>
+                  <div style={{ fontWeight: 500, marginBottom: 4 }}>{cat} Budget: ₹{budgets[cat]}</div>
+                  <Progress percent={Math.min(100, ((categoryTotals[cat] || 0) / budgets[cat]) * 100)} status={(categoryTotals[cat] || 0) > budgets[cat] ? 'exception' : 'active'} />
+                  <div style={{ color: (categoryTotals[cat] || 0) > budgets[cat] ? 'red' : '#1890ff', fontWeight: 600, marginTop: 4 }}>
+                    {(categoryTotals[cat] || 0) > budgets[cat] ? 'Over budget!' : `₹${categoryTotals[cat] || 0} / ₹${budgets[cat]}`}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <Modal
+        title="Set Budgets"
+        open={budgetModalVisible}
+        onCancel={() => setBudgetModalVisible(false)}
+        footer={null}
+        width={350}
+        style={{ top: 40 }}
+        bodyStyle={{ padding: 16 }}
+      >
+        <Form
+          layout="vertical"
+          initialValues={budgets}
+          onFinish={handleSaveBudgets}
+        >
+          <Form.Item label="Overall Budget" name="overall">
+            <Input type="number" placeholder="Enter overall budget" min={0} />
+          </Form.Item>
+          <Form.Item label="Food Budget" name="Food">
+            <Input type="number" placeholder="Enter Food budget" min={0} />
+          </Form.Item>
+          <Form.Item label="Transport Budget" name="Transport">
+            <Input type="number" placeholder="Enter Transport budget" min={0} />
+          </Form.Item>
+          <Form.Item label="Entertainment Budget" name="Entertainment">
+            <Input type="number" placeholder="Enter Entertainment budget" min={0} />
+          </Form.Item>
+          <Form.Item label="Utilities Budget" name="Utilities">
+            <Input type="number" placeholder="Enter Utilities budget" min={0} />
+          </Form.Item>
+          <Form.Item label="Others Budget" name="Others">
+            <Input type="number" placeholder="Enter Others budget" min={0} />
+          </Form.Item>
+          <Form.Item>
+            <Button type="primary" htmlType="submit" loading={budgetLoading} block>
+              Save Budgets
+            </Button>
+          </Form.Item>
+        </Form>
+      </Modal>
 
       {/* Pie Chart for Expense Categories */}
       <div style={{ marginBottom: "24px" }}>
@@ -306,6 +478,7 @@ function Dashboard() {
               paddingAngle={5}
               dataKey="value"
               label
+              onClick={(data) => handleCategoryClick(data)}
             >
               {pieChartData.map((entry, index) => (
                 <Cell
@@ -533,6 +706,35 @@ function Dashboard() {
             <DatePicker style={{ width: "100%" }} />
           </Form.Item>
         </Form>
+      </Modal>
+      
+      <Modal
+        title={`Expenses for ${selectedCategory}`}
+        visible={isCategoryModalVisible}
+        onCancel={handleCategoryModalClose}
+        footer={null}
+        width={600}
+        className="category-modal"
+      >
+        <div style={{ marginBottom: "16px" }}>
+          <ReactDatePicker
+            selected={selectedMonth.toDate()}
+            onChange={(date) => setSelectedMonth(moment(date))}
+            dateFormat="MMMM yyyy"
+            showMonthYearPicker
+            className="ant-input"
+          />
+        </div>
+        <Table
+          dataSource={filteredCategoryExpenses}
+          columns={[
+            { title: 'Title', dataIndex: 'title', key: 'title' },
+            { title: 'Amount', dataIndex: 'amount', key: 'amount', render: (amount) => `₹${parseFloat(amount).toFixed(2)}` },
+            { title: 'Date', dataIndex: 'date', key: 'date', render: (date) => moment(date).format('DD MMMM, YYYY'), sorter: (a, b) => new Date(a.date) - new Date(b.date), defaultSortOrder: 'descend' },
+          ]}
+          rowKey="id"
+          pagination={{ pageSize: 5 }}
+        />
       </Modal>
     </div>
   );

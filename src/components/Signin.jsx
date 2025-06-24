@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Button, Form, Input, message } from 'antd';
+import { Button, Form, Input, message, Alert } from 'antd';
 import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../firebase';
 import { useNavigate, Link } from 'react-router-dom';
 import { GoogleOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
+import { toast } from 'react-toastify';
 
 function Signin() {
   const [loading, setLoading] = useState(false);
@@ -14,10 +15,10 @@ function Signin() {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, values.email, values.password);
-      message.success('Signed in successfully!');
+      toast.success('Signed in successfully!');
       navigate('/dashboard'); // Redirect to the Dashboard page
     } catch (error) {
-      message.error('Failed to sign in: ' + error.message);
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
@@ -26,10 +27,10 @@ function Signin() {
   const handleGoogleSignIn = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
-      message.success('Signed in with Google successfully!');
+      toast.success('Signed in with Google successfully!');
       navigate('/dashboard'); // Redirect to the Dashboard page
     } catch (error) {
-      message.error('Failed to sign in with Google: ' + error.message);
+      toast.error(error.message);
     }
   };
 

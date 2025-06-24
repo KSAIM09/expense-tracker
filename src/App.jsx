@@ -10,55 +10,54 @@ import Signup from './components/Signup';
 import Signin from './components/Signin';
 import { auth } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { message } from 'antd';
+import { toast } from 'react-toastify';
 import { ref, onValue } from 'firebase/database';
 import { db } from './firebase';
-
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const { Header, Content } = Layout;
 
 function App() {
   const [expenses, setExpenses] = useState([]);
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const location = useLocation(); // Get the current location
   const navigate = useNavigate(); // Use for navigation
-  const [initializing, setInitializing] = useState(true);
 
   // Set the current page based on the route
   const currentPage = location.pathname === '/expenses' ? 'expenses' : 'dashboard';
 
   useEffect(() => {
-  const unsubscribe = onAuthStateChanged(auth, (user) => {
-    setUser(user);
-    setInitializing(false); // ✅ done loading
-    if (!user && location.pathname !== '/signin' && location.pathname !== '/signup') {
-      navigate('/signin');
-    }
-  });
-  return () => unsubscribe();
-}, [location, navigate]);
-
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setLoading(false);
+      if (!user && location.pathname !== '/signin' && location.pathname !== '/signup') {
+        navigate('/signin'); // Redirect to sign-in page if not authenticated
+      }
+    });
+    return () => unsubscribe();
+  }, [location, navigate]);
 
   useEffect(() => {
-  if (!user) return; // 🔒 Only fetch if user is logged in
+    const user = auth.currentUser;
+    if (!user) return;
 
-  const expensesRef = ref(db, `expenses/${user.uid}`);
-  const unsubscribe = onValue(expensesRef, (snapshot) => {
-    const data = snapshot.val();
-    if (data) {
-      const expensesArray = Object.keys(data).map((key) => ({
-        id: key,
-        ...data[key],
-      }));
-      setExpenses(expensesArray);
-    } else {
-      setExpenses([]);
-    }
-  });
-
-  return () => unsubscribe(); // 🔄 Clean up listener when user/logs out or component unmounts
-}, [user]); // 👈 Dependency array includes user
-
+    // Fetch expenses for the logged-in user
+    const expensesRef = ref(db, `expenses/${user.uid}`);
+    onValue(expensesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const expensesArray = Object.keys(data).map((key) => ({
+          id: key,
+          ...data[key],
+        }));
+        setExpenses(expensesArray);
+      } else {
+        setExpenses([]);
+      }
+    });
+  }, []);
 
   const handleAddExpense = (newExpense) => {
     setExpenses([...expenses, newExpense]);
@@ -67,10 +66,10 @@ function App() {
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      message.success('Logged out successfully!');
+      toast.success('Logged out successfully!');
       navigate('/signin'); // Redirect to signin page after logout
     } catch (error) {
-      message.error(error.message);
+      toast.error(error.message);
     }
   };
 
@@ -87,8 +86,13 @@ function App() {
     { key: 'dashboard', label: 'Dashboard' },
   ];
 
+  if (loading) {
+    return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span>Loading...</span></div>;
+  }
+
   return (
     <Layout className="layout">
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover />
       {/* Conditionally render the Header */}
       {location.pathname !== '/signup' && location.pathname !== '/signin' && (
         <Header style={{ background: '#fff', padding: '0 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
