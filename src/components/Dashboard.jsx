@@ -8,7 +8,6 @@ import {
   Modal,
   Form,
   Input,
-  DatePicker,
   Select,
   Progress,
 } from "antd";
@@ -48,6 +47,10 @@ function Dashboard() {
   const [budgets, setBudgets] = useState({ overall: '', Food: '', Transport: '', Entertainment: '', Utilities: '', Others: '' });
   const [budgetLoading, setBudgetLoading] = useState(false);
   const [showBudgets, setShowBudgets] = useState(false);
+  const [currentMonthKey, setCurrentMonthKey] = useState(moment().format('YYYY-MM'));
+  const [selectedBudgetMonth, setSelectedBudgetMonth] = useState(moment());
+  const [showCopyPrevModal, setShowCopyPrevModal] = useState(false);
+  const [prevMonthBudget, setPrevMonthBudget] = useState(null);
 
   const user = auth.currentUser;
 
@@ -119,8 +122,22 @@ function Dashboard() {
     setGroupedExpenses(grouped);
   };
 
-  // Group expenses by category
-  const categoryData = expenses.reduce((acc, expense) => {
+  // Filter expenses for the selected month
+  const selectedMonthKey = selectedBudgetMonth.format('YYYY-MM');
+  const filteredExpenses = expenses.filter(exp => exp.date && exp.date.startsWith(selectedMonthKey));
+
+  // Group filtered expenses by date
+  const groupedFilteredExpenses = filteredExpenses.reduce((acc, expense) => {
+    const date = expense.date;
+    if (!acc[date]) {
+      acc[date] = [];
+    }
+    acc[date].push(expense);
+    return acc;
+  }, {});
+
+  // Group expenses by category for the pie chart (filtered)
+  const categoryData = filteredExpenses.reduce((acc, expense) => {
     if (!acc[expense.category]) {
       acc[expense.category] = 0;
     }
@@ -137,11 +154,8 @@ function Dashboard() {
   // Colors for the pie chart
   const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#AF19FF"];
 
-  // Calculate total spent in the current month
-  const currentMonth = moment().format('YYYY-MM');
-  const monthlyTotal = expenses
-    .filter(exp => exp.date && exp.date.startsWith(currentMonth))
-    .reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+  // Calculate total spent for the selected month
+  const selectedMonthTotal = filteredExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
 
   const handleShowExpenses = (date) => {
     setSelectedDate(date);
@@ -285,11 +299,11 @@ function Dashboard() {
     },
   ];
 
-  // Prepare data for the table
-  const dataSource = Object.keys(groupedExpenses)
+  // Prepare data for the table (filtered)
+  const dataSource = Object.keys(groupedFilteredExpenses)
     .sort((a, b) => new Date(b) - new Date(a)) // Sort by date descending
     .map((date) => {
-      const totalAmount = groupedExpenses[date].reduce(
+      const totalAmount = groupedFilteredExpenses[date].reduce(
         (sum, expense) => sum + parseFloat(expense.amount),
         0
       );
@@ -300,23 +314,42 @@ function Dashboard() {
       };
     });
 
-  // Fetch budgets from Firebase
+  // Fetch budgets from Firebase (per month, for selected month)
   useEffect(() => {
     if (!user) return;
-    const budgetRef = ref(db, `budgets/${user.uid}`);
+    const monthKey = selectedBudgetMonth.format('YYYY-MM');
+    setCurrentMonthKey(monthKey);
+    const budgetRef = ref(db, `budgets/${user.uid}/${monthKey}`);
     onValue(budgetRef, (snapshot) => {
       const data = snapshot.val();
-      if (data) setBudgets({ ...budgets, ...data });
+      if (data) {
+        setBudgets({ ...budgets, ...data });
+      } else {
+        setBudgets({ overall: '', Food: '', Transport: '', Entertainment: '', Utilities: '', Others: '' });
+        // If current month and no budget, check previous month
+        if (monthKey === moment().format('YYYY-MM')) {
+          const prevMonthKey = moment().subtract(1, 'month').format('YYYY-MM');
+          const prevBudgetRef = ref(db, `budgets/${user.uid}/${prevMonthKey}`);
+          onValue(prevBudgetRef, (snap) => {
+            const prevData = snap.val();
+            if (prevData) {
+              setPrevMonthBudget(prevData);
+              setShowCopyPrevModal(true);
+            }
+          }, { onlyOnce: true });
+        }
+      }
     });
     // eslint-disable-next-line
-  }, [user]);
+  }, [user, selectedBudgetMonth]);
 
-  // Save budgets to Firebase
+  // Save budgets to Firebase (per month)
   const handleSaveBudgets = async (values) => {
     if (!user) return;
     setBudgetLoading(true);
     try {
-      await set(ref(db, `budgets/${user.uid}`), values);
+      const monthKey = currentMonthKey;
+      await set(ref(db, `budgets/${user.uid}/${monthKey}`), values);
       toast.success('Budgets saved!');
       setBudgetModalVisible(false);
       setBudgets(values);
@@ -327,9 +360,9 @@ function Dashboard() {
     }
   };
 
-  // Calculate totals for progress bars
-  const totalSpent = expenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
-  const categoryTotals = expenses.reduce((acc, exp) => {
+  // Calculate totals for progress bars (filtered for selected month)
+  const totalSpent = filteredExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+  const categoryTotals = filteredExpenses.reduce((acc, exp) => {
     acc[exp.category] = (acc[exp.category] || 0) + parseFloat(exp.amount);
     return acc;
   }, {});
@@ -345,6 +378,20 @@ function Dashboard() {
     width: '100%',
     marginLeft: 'auto',
     marginRight: 'auto',
+  };
+
+  // Handle copy previous month budget
+  const handleCopyPrevBudget = async () => {
+    if (!user || !prevMonthBudget) return;
+    const monthKey = currentMonthKey;
+    await set(ref(db, `budgets/${user.uid}/${monthKey}`), prevMonthBudget);
+    setBudgets(prevMonthBudget);
+    setShowCopyPrevModal(false);
+  };
+
+  // Handle dismiss copy modal
+  const handleDismissCopyModal = () => {
+    setShowCopyPrevModal(false);
   };
 
   return (
@@ -367,9 +414,27 @@ function Dashboard() {
         >
           Set Budget
         </Button>
-        <Button onClick={() => setShowBudgets(!showBudgets)}>
+        <Button 
+          onClick={() => setShowBudgets(!showBudgets)}
+          style={showBudgets
+            ? { background: '#1890ff', color: '#fff', border: 'none' }
+            : { background: '#fff', color: '#1890ff', border: '1px solid #1890ff' }
+          }
+        >
           {showBudgets ? 'Hide Budgets' : 'Show Budgets'}
         </Button>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+        <ReactDatePicker
+          selected={selectedBudgetMonth.toDate()}
+          onChange={date => setSelectedBudgetMonth(moment(date))}
+          dateFormat="MMMM yyyy"
+          showMonthYearPicker
+          className="ant-input dashboard-month-picker"
+          maxDate={new Date()}
+          style={{ minWidth: 180, border: 'none', borderRadius: 20 }}
+        />
       </div>
 
       {/* Monthly Total Box */}
@@ -385,7 +450,7 @@ function Dashboard() {
         maxWidth: 400,
         textAlign: "center"
       }}>
-        Total Spent This Month: ₹{monthlyTotal.toFixed(2)}
+        Total Spent This Month: ₹{selectedMonthTotal.toFixed(2)}
       </div>
       
       <AnimatePresence>
@@ -507,7 +572,7 @@ function Dashboard() {
       </div>
 
       <AnimatePresence mode="wait">
-        {selectedDate && groupedExpenses[selectedDate] && (
+        {selectedDate && groupedFilteredExpenses[selectedDate] && (
           <motion.div
             key={selectedDate}
             initial={{ opacity: 0, y: 40, scale: 0.95 }}
@@ -583,7 +648,7 @@ function Dashboard() {
                 </Button>
               </Popconfirm>
             </div>
-            {groupedExpenses[selectedDate].map((expense) => (
+            {groupedFilteredExpenses[selectedDate].map((expense) => (
               <div
                 key={expense.id}
                 style={{
@@ -703,7 +768,13 @@ function Dashboard() {
             label="Date"
             rules={[{ required: true, message: "Please select a date!" }]}
           >
-            <DatePicker style={{ width: "100%" }} />
+            <ReactDatePicker
+              selected={form.getFieldValue('date') ? form.getFieldValue('date').toDate() : null}
+              onChange={date => form.setFieldsValue({ date: date ? moment(date) : null })}
+              dateFormat="yyyy-MM-dd"
+              className="ant-input"
+              style={{ width: "100%" }}
+            />
           </Form.Item>
         </Form>
       </Modal>
@@ -736,6 +807,33 @@ function Dashboard() {
           pagination={{ pageSize: 5 }}
         />
       </Modal>
+
+      <Modal
+        open={showCopyPrevModal}
+        onCancel={handleDismissCopyModal}
+        onOk={handleCopyPrevBudget}
+        okText="Copy Previous Month's Budget"
+        cancelText="No, I'll Set Manually"
+        title="No Budget Set for This Month"
+        closable={false}
+        maskClosable={false}
+        keyboard={false}
+      >
+        <div>
+          Do you want to copy the previous month's budget?
+        </div>
+      </Modal>
+
+      <style>{`
+        .dashboard-month-picker {
+          border: none !important;
+          border-radius: 20px !important;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+          padding: 6px 16px;
+          font-size: 1rem;
+          background: #fff;
+        }
+      `}</style>
     </div>
   );
 }

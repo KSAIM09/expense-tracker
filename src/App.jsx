@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { Layout, Menu, Button, Space } from 'antd';
+import { Layout, Menu, Button, Space, Dropdown } from 'antd';
 import { UserOutlined } from '@ant-design/icons';
 import './index.css';
 import ExpenseForm from './components/ExpenseForm';
@@ -15,6 +15,7 @@ import { ref, onValue } from 'firebase/database';
 import { db } from './firebase';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import MonthHistory from './components/MonthHistory';
 
 const { Header, Content } = Layout;
 
@@ -26,7 +27,14 @@ function App() {
   const navigate = useNavigate(); // Use for navigation
 
   // Set the current page based on the route
-  const currentPage = location.pathname === '/expenses' ? 'expenses' : 'dashboard';
+  let currentPage = 'dashboard';
+  if (location.pathname.startsWith('/expenses')) {
+    currentPage = 'expenses';
+  } else if (location.pathname.startsWith('/dashboard')) {
+    currentPage = 'dashboard';
+  } else if (location.pathname.startsWith('/month-history')) {
+    currentPage = 'month-history';
+  }
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -84,6 +92,7 @@ function App() {
   const menuItems = [
     { key: 'expenses', label: 'Expenses' },
     { key: 'dashboard', label: 'Dashboard' },
+    { key: 'month-history', label: 'Month History' },
   ];
 
   if (loading) {
@@ -107,13 +116,27 @@ function App() {
                   navigate('/expenses'); // Use navigate instead of window.location.href
                 } else if (key === 'dashboard') {
                   navigate('/dashboard'); // Use navigate instead of window.location.href
+                } else if (key === 'month-history') {
+                  navigate('/month-history'); // Use navigate instead of window.location.href
                 }
               }}
               style={{ flex: 1, borderBottom: 'none' }}
             />
             {user && (
-              <Space>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <Dropdown
+                overlay={
+                  <div style={{ padding: 12, minWidth: 160, background: '#fff', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+                    <div style={{ fontWeight: 600, marginBottom: 8, textAlign: 'center' }}>{userName}</div>
+                    <Button type="primary" danger onClick={handleLogout} style={{ width: '100%' }}>
+                      Logout
+                    </Button>
+                  </div>
+                }
+                trigger={['click']}
+                placement="bottomRight"
+                arrow
+              >
+                <span style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
                   {user.photoURL ? (
                     <img
                       src={user.photoURL}
@@ -121,16 +144,10 @@ function App() {
                       style={{ width: '32px', height: '32px', borderRadius: '50%' }}
                     />
                   ) : (
-                    <UserOutlined style={{ fontSize: '18px', color: 'black' }} />
+                    <UserOutlined style={{ fontSize: '22px', color: 'black' }} />
                   )}
-                  <span style={{ color: 'black',fontWeight: "bold" }}>
-                    {userName}
-                  </span>
                 </span>
-                <Button type="primary" danger onClick={handleLogout} style={{ border: "none" }}>
-                  Logout
-                </Button>
-              </Space>
+              </Dropdown>
             )}
           </div>
         </Header>
@@ -155,6 +172,10 @@ function App() {
           <Route
             path="/dashboard"
             element={user ? <Dashboard /> : <Navigate to="/signin" />}
+          />
+          <Route
+            path="/month-history"
+            element={user ? <MonthHistory /> : <Navigate to="/signin" />}
           />
         </Routes>
       </Content>
