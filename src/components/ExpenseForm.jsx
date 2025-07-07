@@ -5,6 +5,7 @@ import { PlusCircleOutlined } from '@ant-design/icons';
 import { ref, push, get, onValue } from 'firebase/database';
 import { db, auth } from '../firebase';
 import { toast } from 'react-toastify';
+import moment from 'moment';
 
 function ExpenseForm({ onAddExpense }) {
   const [loading, setLoading] = useState(false);
@@ -17,14 +18,17 @@ function ExpenseForm({ onAddExpense }) {
     const user = auth.currentUser;
     if (!user) return;
 
-    // Fetch expenses
+    // Get current month key (YYYY-MM)
+    const currentMonthKey = moment().format('YYYY-MM');
+
+    // Fetch expenses for the current month only
     const expensesRef = ref(db, `expenses/${user.uid}`);
     const unsubscribeExpenses = onValue(expensesRef, (snapshot) => {
       const data = snapshot.val();
       const expenseList = [];
       if (data) {
         Object.keys(data).forEach((date) => {
-          if (typeof data[date] === 'object') {
+          if (typeof data[date] === 'object' && date.startsWith(currentMonthKey)) {
             Object.keys(data[date]).forEach((expenseId) => {
               expenseList.push({ ...data[date][expenseId], id: expenseId, date });
             });
@@ -34,8 +38,8 @@ function ExpenseForm({ onAddExpense }) {
       setExpenses(expenseList);
     });
 
-    // Fetch budgets
-    const budgetRef = ref(db, `budgets/${user.uid}`);
+    // Fetch budget for the current month only
+    const budgetRef = ref(db, `budgets/${user.uid}/${currentMonthKey}`);
     const unsubscribeBudgets = onValue(budgetRef, (snapshot) => {
       setBudgets(snapshot.val());
     });
@@ -66,7 +70,7 @@ function ExpenseForm({ onAddExpense }) {
       form.resetFields();
       toast.success('Expense added successfully!');
 
-      // Check budget alerts
+      // Check budget alerts (for current month only)
       if (budgets) {
         const newAmount = parseFloat(amount);
         const totalSpent = expenses.reduce((sum, exp) => sum + exp.amount, 0) + newAmount;

@@ -80,18 +80,16 @@ function MonthHistory() {
       <div style={{ marginBottom: 32 }}>
         <h3>Monthly Expenses Overview</h3>
         {chartData.length > 0 ? (
-          <div className="mh-bar-chart-container" style={{ width: '100%', overflowX: 'auto' }}>
-            <div style={{ minWidth: 500 }}>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={chartData} margin={{ top: 16, right: 24, left: 0, bottom: 8 }}>
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="total" fill="#1890ff" name="Total Spent" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+          <div className="mh-bar-chart-container" style={{ width: '100%', maxWidth: '100%', overflowX: 'auto' }}>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={chartData} margin={{ top: 16, right: 24, left: 0, bottom: 8 }}>
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="total" fill="#1890ff" name="Total Spent" barSize={16} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         ) : <Empty description="No data" />}
       </div>
