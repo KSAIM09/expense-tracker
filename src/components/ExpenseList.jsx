@@ -94,7 +94,7 @@ function ExpenseList() {
     <div>
       <Row justify="space-between" align="middle" style={{ marginBottom: '20px', marginTop: '20px' }}>
         <Col>
-          <h2 style={{ margin: 0 }}>Expenses</h2>
+          <h2 style={{ margin: 0 }}>Recent Expenses</h2>
         </Col>
         <Col>
           <DatePicker
