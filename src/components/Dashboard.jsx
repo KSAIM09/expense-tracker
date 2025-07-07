@@ -10,6 +10,9 @@ import {
   Input,
   Select,
   Progress,
+  Tabs,
+  InputNumber,
+  DatePicker,
 } from "antd";
 import {
   CloseCircleOutlined,
@@ -17,7 +20,7 @@ import {
   EyeOutlined,
   EditOutlined,
 } from "@ant-design/icons";
-import { ref, onValue, remove, update, set } from "firebase/database";
+import { ref, onValue, remove, update, set, push } from "firebase/database";
 import { db, auth } from "../firebase";
 import { motion, AnimatePresence } from "framer-motion";
 import moment from "moment";
@@ -51,6 +54,17 @@ function Dashboard() {
   const [selectedBudgetMonth, setSelectedBudgetMonth] = useState(moment());
   const [showCopyPrevModal, setShowCopyPrevModal] = useState(false);
   const [prevMonthBudget, setPrevMonthBudget] = useState(null);
+  const [activeTab, setActiveTab] = useState('tracker');
+  const [credits, setCredits] = useState([]);
+  const [creditForm, setCreditForm] = useState({ amount: '', description: '', date: moment() });
+  const [creditLoading, setCreditLoading] = useState(false);
+  const [editingCredit, setEditingCredit] = useState(null);
+  const [editCreditForm, setEditCreditForm] = useState({ amount: '', description: '', date: null });
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [selectedCreditMonth, setSelectedCreditMonth] = useState(moment());
+  const [emiList, setEmiList] = useState([]);
+  const [emiForm, setEmiForm] = useState({ amount: '', description: '', date: moment() });
+  const [emiLoading, setEmiLoading] = useState(false);
 
   const user = auth.currentUser;
 
@@ -154,8 +168,13 @@ function Dashboard() {
   // Colors for the pie chart
   const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#AF19FF"];
 
-  // Calculate total spent for the selected month
+  // These must come first:
+  const totalCredits = credits.reduce((sum, c) => sum + parseFloat(c.amount), 0);
   const selectedMonthTotal = filteredExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+  const emiDeducted = emiList.reduce((sum, e) => sum + parseFloat(e.amount), 0);
+
+  // Then calculate netBalance:
+  const netBalance = totalCredits - selectedMonthTotal - emiDeducted;
 
   const handleShowExpenses = (date) => {
     setSelectedDate(date);
@@ -394,6 +413,157 @@ function Dashboard() {
     setShowCopyPrevModal(false);
   };
 
+  // Fetch credits for the selected month
+  useEffect(() => {
+    if (!user) return;
+    const monthKey = selectedCreditMonth.format('YYYY-MM');
+    const creditsRef = ref(db, `credits/${user.uid}`);
+    onValue(creditsRef, (snapshot) => {
+      const data = snapshot.val();
+      const creditList = [];
+      if (data) {
+        Object.keys(data).forEach((date) => {
+          if (date.startsWith(monthKey)) {
+            Object.keys(data[date]).forEach((creditId) => {
+              creditList.push({ ...data[date][creditId], id: creditId, date });
+            });
+          }
+        });
+      }
+      setCredits(creditList);
+    });
+  }, [user, selectedCreditMonth]);
+
+  // Handle credit form input
+  const handleCreditInput = (field, value) => {
+    setCreditForm({ ...creditForm, [field]: value });
+  };
+
+  // Handle credit form submit
+  const handleAddCredit = async (e) => {
+    e.preventDefault();
+    if (!user) return;
+    if (!creditForm.amount || !creditForm.date) return;
+    setCreditLoading(true);
+    try {
+      const formattedDate = creditForm.date.format('YYYY-MM-DD');
+      const creditsRef = ref(db, `credits/${user.uid}/${formattedDate}`);
+      await push(creditsRef, {
+        amount: parseFloat(creditForm.amount),
+        description: creditForm.description,
+      });
+      setCreditForm({ amount: '', description: '', date: moment() });
+      toast.success('Credit added!');
+    } catch (e) {
+      toast.error('Failed to add credit');
+    } finally {
+      setCreditLoading(false);
+    }
+  };
+
+  // Delete credit
+  const handleDeleteCredit = async (credit) => {
+    if (!user) return;
+    try {
+      const creditsRef = ref(db, `credits/${user.uid}/${credit.date}/${credit.id}`);
+      await remove(creditsRef);
+      toast.success('Credit deleted!');
+    } catch (e) {
+      toast.error('Failed to delete credit');
+    }
+  };
+
+  // Edit credit
+  const handleEditCredit = (credit) => {
+    setEditingCredit(credit);
+    setEditCreditForm({
+      amount: credit.amount,
+      description: credit.description,
+      date: DatePicker ? moment(credit.date, 'YYYY-MM-DD') : null,
+    });
+    setEditModalVisible(true);
+  };
+
+  const handleEditCreditInput = (field, value) => {
+    setEditCreditForm({ ...editCreditForm, [field]: value });
+  };
+
+  const handleEditCreditSubmit = async () => {
+    if (!user || !editingCredit) return;
+    try {
+      const formattedDate = editCreditForm.date.format('YYYY-MM-DD');
+      const creditsRef = ref(db, `credits/${user.uid}/${editingCredit.date}/${editingCredit.id}`);
+      // If date changed, remove from old date and push to new date
+      if (formattedDate !== editingCredit.date) {
+        await remove(creditsRef);
+        const newRef = ref(db, `credits/${user.uid}/${formattedDate}`);
+        await push(newRef, {
+          amount: parseFloat(editCreditForm.amount),
+          description: editCreditForm.description,
+        });
+      } else {
+        await set(creditsRef, {
+          amount: parseFloat(editCreditForm.amount),
+          description: editCreditForm.description,
+        });
+      }
+      toast.success('Credit updated!');
+      setEditModalVisible(false);
+      setEditingCredit(null);
+    } catch (e) {
+      toast.error('Failed to update credit');
+    }
+  };
+
+  // Fetch EMI entries for the selected month
+  useEffect(() => {
+    if (!user) return;
+    const monthKey = selectedCreditMonth.format('YYYY-MM');
+    const emiRef = ref(db, `emi/${user.uid}`);
+    onValue(emiRef, (snapshot) => {
+      const data = snapshot.val();
+      const emiArr = [];
+      if (data) {
+        Object.keys(data).forEach((date) => {
+          if (date.startsWith(monthKey)) {
+            Object.keys(data[date]).forEach((emiId) => {
+              emiArr.push({ ...data[date][emiId], id: emiId, date });
+            });
+          }
+        });
+      }
+      setEmiList(emiArr);
+    });
+  }, [user, selectedCreditMonth]);
+
+  // EMI Deducted and Remaining Credits
+  const remainingCredits = totalCredits - emiDeducted;
+
+  // EMI form handlers
+  const handleEmiInput = (field, value) => {
+    setEmiForm({ ...emiForm, [field]: value });
+  };
+  const handleAddEmi = async (e) => {
+    e.preventDefault();
+    if (!user) return;
+    if (!emiForm.amount || !emiForm.date) return;
+    setEmiLoading(true);
+    try {
+      const formattedDate = emiForm.date.format('YYYY-MM-DD');
+      const emiRef = ref(db, `emi/${user.uid}/${formattedDate}`);
+      await push(emiRef, {
+        amount: parseFloat(emiForm.amount),
+        description: emiForm.description,
+      });
+      setEmiForm({ amount: '', description: '', date: moment() });
+      toast.success('EMI added!');
+    } catch (e) {
+      toast.error('Failed to add EMI');
+    } finally {
+      setEmiLoading(false);
+    }
+  };
+
   return (
     <div
       style={{
@@ -405,287 +575,255 @@ function Dashboard() {
         boxSizing: "border-box",
       }}
     >
-      <h1 style={{ marginBottom: "24px" }}>Welcome, {userName}</h1>
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: 16 }}>
-        <Button 
-          type="primary" 
-          onClick={() => setBudgetModalVisible(true)} 
-          style={{ color: 'white' }}
-        >
-          Set Budget
-        </Button>
-        <Button 
-          onClick={() => setShowBudgets(!showBudgets)}
-          style={showBudgets
-            ? { background: '#1890ff', color: '#fff', border: 'none' }
-            : { background: '#fff', color: '#1890ff', border: '1px solid #1890ff' }
-          }
-        >
-          {showBudgets ? 'Hide Budgets' : 'Show Budgets'}
-        </Button>
-      </div>
-
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-        <ReactDatePicker
-          selected={selectedBudgetMonth.toDate()}
-          onChange={date => setSelectedBudgetMonth(moment(date))}
-          dateFormat="MMMM yyyy"
-          showMonthYearPicker
-          className="ant-input dashboard-month-picker"
-          maxDate={new Date()}
-          style={{ minWidth: 180, border: 'none', borderRadius: 20 }}
-        />
-      </div>
-
-      {/* Monthly Total Box */}
-      <div style={{
-        margin: "0 auto 24px auto",
-        padding: "24px 0",
-        background: "#e6f7ff",
-        borderRadius: "10px",
-        fontSize: "2rem",
-        fontWeight: 700,
-        color: "#1890ff",
-        boxShadow: "0 2px 8px rgba(24,144,255,0.08)",
-        maxWidth: 400,
-        textAlign: "center"
-      }}>
-        Total Spent This Month: ₹{selectedMonthTotal.toFixed(2)}
-      </div>
-      
-      <AnimatePresence>
-        {showBudgets && (
-          <motion.div
-            initial={{ opacity: 0, height: 0, y: -20 }}
-            animate={{ opacity: 1, height: 'auto', y: 0 }}
-            exit={{ opacity: 0, height: 0, y: -20 }}
-            transition={{ duration: 0.4, ease: 'easeInOut' }}
-            style={{ overflow: 'hidden' }}
-          >
-            {/* Overall Budget Progress */}
-            {budgets.overall && (
-              <div style={progressContainerStyle}>
-                <div style={{ fontWeight: 500, marginBottom: 4 }}>Overall Budget: ₹{budgets.overall}</div>
-                <Progress percent={Math.min(100, ((totalSpent / budgets.overall) * 100).toFixed(0))} status={totalSpent > budgets.overall ? 'exception' : 'active'} />
-                <div style={{ color: totalSpent > budgets.overall ? 'red' : '#1890ff', fontWeight: 600, marginTop: 4 }}>
-                  {totalSpent > budgets.overall ? 'Over budget!' : `₹${totalSpent} / ₹${budgets.overall}`}
-                </div>
-              </div>
-            )}
-            {/* Per-Category Budgets */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
-              {Object.keys(budgets).filter(k => k !== 'overall').map(cat => budgets[cat] && (
-                <div key={cat} style={{ ...progressContainerStyle, minWidth: 220, flex: '1 1 220px' }}>
-                  <div style={{ fontWeight: 500, marginBottom: 4 }}>{cat} Budget: ₹{budgets[cat]}</div>
-                  <Progress percent={Math.min(100, ((categoryTotals[cat] || 0) / budgets[cat]) * 100)} status={(categoryTotals[cat] || 0) > budgets[cat] ? 'exception' : 'active'} />
-                  <div style={{ color: (categoryTotals[cat] || 0) > budgets[cat] ? 'red' : '#1890ff', fontWeight: 600, marginTop: 4 }}>
-                    {(categoryTotals[cat] || 0) > budgets[cat] ? 'Over budget!' : `₹${categoryTotals[cat] || 0} / ₹${budgets[cat]}`}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <Modal
-        title="Set Budgets"
-        open={budgetModalVisible}
-        onCancel={() => setBudgetModalVisible(false)}
-        footer={null}
-        width={350}
-        style={{ top: 40 }}
-        bodyStyle={{ padding: 16 }}
-      >
-        <Form
-          layout="vertical"
-          initialValues={budgets}
-          onFinish={handleSaveBudgets}
-        >
-          <Form.Item label="Overall Budget" name="overall">
-            <Input type="number" placeholder="Enter overall budget" min={0} />
-          </Form.Item>
-          <Form.Item label="Food Budget" name="Food">
-            <Input type="number" placeholder="Enter Food budget" min={0} />
-          </Form.Item>
-          <Form.Item label="Transport Budget" name="Transport">
-            <Input type="number" placeholder="Enter Transport budget" min={0} />
-          </Form.Item>
-          <Form.Item label="Entertainment Budget" name="Entertainment">
-            <Input type="number" placeholder="Enter Entertainment budget" min={0} />
-          </Form.Item>
-          <Form.Item label="Utilities Budget" name="Utilities">
-            <Input type="number" placeholder="Enter Utilities budget" min={0} />
-          </Form.Item>
-          <Form.Item label="Others Budget" name="Others">
-            <Input type="number" placeholder="Enter Others budget" min={0} />
-          </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit" loading={budgetLoading} block>
-              Save Budgets
-            </Button>
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      {/* Pie Chart for Expense Categories */}
-      <div style={{ marginBottom: "24px" }}>
-        <h3>Expense Categories</h3>
-        <ResponsiveContainer width="100%" height={300}>
-          <PieChart>
-            <Pie
-              data={pieChartData}
-              cx="50%"
-              cy="50%"
-              innerRadius={60}
-              outerRadius={80}
-              fill="#8884d8"
-              paddingAngle={5}
-              dataKey="value"
-              label
-              onClick={(data) => handleCategoryClick(data)}
-            >
-              {pieChartData.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={COLORS[index % COLORS.length]}
-                />
-              ))}
-            </Pie>
-            <Tooltip />
-            <Legend />
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
-
-      <Table
-        dataSource={dataSource}
-        columns={columns}
-        rowKey="key"
-        pagination={{ pageSize: 5, position: ["bottomRight"] }}
-        scroll={false}
+      {/* Navbar Tabs */}
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        style={{ marginBottom: 24 }}
+        items={[
+          { key: 'tracker', label: 'Tracker' },
+          { key: 'credits', label: 'Credits' },
+          { key: 'emi', label: 'EMI' },
+        ]}
       />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-        <div style={{ color: '#888', fontWeight: 500, marginBottom: "20px" }}>
-          Total Days: {dataSource.length}
-        </div>
-      </div>
-
-      <AnimatePresence mode="wait">
-        {selectedDate && groupedFilteredExpenses[selectedDate] && (
-          <motion.div
-            key={selectedDate}
-            initial={{ opacity: 0, y: 40, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -40, scale: 0.95 }}
-            transition={{ duration: 0.35 }}
-            style={{
-              padding: "20px",
-              border: "1px solid #e0e0e0",
-              borderRadius: "8px",
-              position: "relative",
-              background: "#fff",
-              boxShadow: "0 2px 16px rgba(0,0,0,0.08)",
-              marginBottom: 24,
-              minHeight: 120,
-            }}
-          >
-            <CloseCircleOutlined
-              style={{
-                position: "absolute",
-                top: "12px",
-                right: "12px",
-                cursor: "pointer",
-                fontSize: "22px",
-                color: "#888",
-                zIndex: 1,
-                marginBottom: "40px",
-              }}
-              onClick={handleCloseContainer}
-            />
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 18,
-                flexWrap: "wrap",
-                gap: "12px",
-                marginTop: "40px",
-              }}
+      {/* Tracker Tab */}
+      {activeTab === 'tracker' && (
+        <>
+          <h1 style={{ marginBottom: "24px" }}>Welcome, {userName}</h1>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: 16 }}>
+            <Button 
+              type="primary" 
+              onClick={() => setBudgetModalVisible(true)} 
+              style={{ color: 'white' }}
             >
-              <h3 style={{ margin: 0, fontWeight: 600, fontSize: 20 }}>
-                Expenses for <span style={{ color: "#178fff", marginLeft: "20px", fontWeight: "900"}}>{moment(selectedDate, 'YYYY-MM-DD').format('D MMMM')}</span>
-              </h3>
-              <Popconfirm
-                title="Delete all expenses for this day?"
-                onConfirm={() => handleDeleteAllForDate(selectedDate)}
-                okText="Yes"
-                cancelText="No"
-                placement="top"
-                overlayStyle={{
-                  maxWidth: "200px",
-                  wordWrap: "break-word",
-                  textAlign: "center",
-                }}
-                okButtonProps={{ style: { width: "80px", marginRight: "8px", color: "white" } }}
-                cancelButtonProps={{ style: { width: "80px", color: "white" } }}
-              >
-                <Button
-                  type="primary"
-                  danger
-                  icon={<DeleteOutlined style={{ color: "white" }} />}
-                  style={{
-                    background: "#ff4d4f",
-                    borderColor: "#ff4d4f",
-                    color: "white",
-                    fontWeight: 500,
-                    marginLeft: 0,
-                  }}
-                  size="small"
-                >
-                  Delete All
-                </Button>
-              </Popconfirm>
+              Set Budget
+            </Button>
+            <Button 
+              onClick={() => setShowBudgets(!showBudgets)}
+              style={showBudgets
+                ? { background: '#1890ff', color: '#fff', border: 'none' }
+                : { background: '#fff', color: '#1890ff', border: '1px solid #1890ff' }
+              }
+            >
+              {showBudgets ? 'Hide Budgets' : 'Show Budgets'}
+            </Button>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+            <ReactDatePicker
+              selected={selectedBudgetMonth.toDate()}
+              onChange={date => setSelectedBudgetMonth(moment(date))}
+              dateFormat="MMMM yyyy"
+              showMonthYearPicker
+              className="ant-input dashboard-month-picker"
+              maxDate={new Date()}
+              style={{ minWidth: 180, border: 'none', borderRadius: 20 }}
+            />
+          </div>
+
+          {/* Net Balance Overview */}
+          <div style={{
+            margin: "0 auto 24px auto",
+            padding: "24px 0",
+            background: "#f6ffed",
+            borderRadius: "10px",
+            fontSize: "1.5rem",
+            fontWeight: 700,
+            color: netBalance >= 0 ? "#52c41a" : "#ff4d4f",
+            boxShadow: "0 2px 8px rgba(82,196,26,0.08)",
+            maxWidth: 400,
+            textAlign: "center",
+            border: netBalance < 0 ? '2px solid #ff4d4f' : 'none',
+          }}>
+            Net Balance: ₹{netBalance.toFixed(2)}
+            <div style={{ fontSize: '1rem', fontWeight: 400, color: '#888', marginTop: 4 }}>
+              (Credits − Expenses − EMI Deducted)
             </div>
-            {groupedFilteredExpenses[selectedDate].map((expense) => (
-              <div
-                key={expense.id}
+          </div>
+
+          {/* Monthly Total Box */}
+          <div style={{
+            margin: "0 auto 24px auto",
+            padding: "24px 0",
+            background: "#e6f7ff",
+            borderRadius: "10px",
+            fontSize: "2rem",
+            fontWeight: 700,
+            color: "#1890ff",
+            boxShadow: "0 2px 8px rgba(24,144,255,0.08)",
+            maxWidth: 400,
+            textAlign: "center"
+          }}>
+            Total Spent This Month: ₹{selectedMonthTotal.toFixed(2)}
+          </div>
+          
+          <AnimatePresence>
+            {showBudgets && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, y: -20 }}
+                animate={{ opacity: 1, height: 'auto', y: 0 }}
+                exit={{ opacity: 0, height: 0, y: -20 }}
+                transition={{ duration: 0.4, ease: 'easeInOut' }}
+                style={{ overflow: 'hidden' }}
+              >
+                {/* Overall Budget Progress */}
+                {budgets.overall && (
+                  <div style={progressContainerStyle}>
+                    <div style={{ fontWeight: 500, marginBottom: 4 }}>Overall Budget: ₹{budgets.overall}</div>
+                    <Progress percent={Math.min(100, ((totalSpent / budgets.overall) * 100).toFixed(0))} status={totalSpent > budgets.overall ? 'exception' : 'active'} />
+                    <div style={{ color: totalSpent > budgets.overall ? 'red' : '#1890ff', fontWeight: 600, marginTop: 4 }}>
+                      {totalSpent > budgets.overall ? 'Over budget!' : `₹${totalSpent} / ₹${budgets.overall}`}
+                    </div>
+                  </div>
+                )}
+                {/* Per-Category Budgets */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
+                  {Object.keys(budgets).filter(k => k !== 'overall').map(cat => budgets[cat] && (
+                    <div key={cat} style={{ ...progressContainerStyle, minWidth: 220, flex: '1 1 220px' }}>
+                      <div style={{ fontWeight: 500, marginBottom: 4 }}>{cat} Budget: ₹{budgets[cat]}</div>
+                      <Progress percent={Math.min(100, ((categoryTotals[cat] || 0) / budgets[cat]) * 100)} status={(categoryTotals[cat] || 0) > budgets[cat] ? 'exception' : 'active'} />
+                      <div style={{ color: (categoryTotals[cat] || 0) > budgets[cat] ? 'red' : '#1890ff', fontWeight: 600, marginTop: 4 }}>
+                        {(categoryTotals[cat] || 0) > budgets[cat] ? 'Over budget!' : `₹${categoryTotals[cat] || 0} / ₹${budgets[cat]}`}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <Modal
+            title="Set Budgets"
+            open={budgetModalVisible}
+            onCancel={() => setBudgetModalVisible(false)}
+            footer={null}
+            width={350}
+            style={{ top: 40 }}
+            bodyStyle={{ padding: 16 }}
+          >
+            <Form
+              layout="vertical"
+              initialValues={budgets}
+              onFinish={handleSaveBudgets}
+            >
+              <Form.Item label="Overall Budget" name="overall">
+                <Input type="number" placeholder="Enter overall budget" min={0} />
+              </Form.Item>
+              <Form.Item label="Food Budget" name="Food">
+                <Input type="number" placeholder="Enter Food budget" min={0} />
+              </Form.Item>
+              <Form.Item label="Transport Budget" name="Transport">
+                <Input type="number" placeholder="Enter Transport budget" min={0} />
+              </Form.Item>
+              <Form.Item label="Entertainment Budget" name="Entertainment">
+                <Input type="number" placeholder="Enter Entertainment budget" min={0} />
+              </Form.Item>
+              <Form.Item label="Utilities Budget" name="Utilities">
+                <Input type="number" placeholder="Enter Utilities budget" min={0} />
+              </Form.Item>
+              <Form.Item label="Others Budget" name="Others">
+                <Input type="number" placeholder="Enter Others budget" min={0} />
+              </Form.Item>
+              <Form.Item>
+                <Button type="primary" htmlType="submit" loading={budgetLoading} block>
+                  Save Budgets
+                </Button>
+              </Form.Item>
+            </Form>
+          </Modal>
+
+          {/* Pie Chart for Expense Categories */}
+          <div style={{ marginBottom: "24px" }}>
+            <h3>Expense Categories</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={pieChartData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  paddingAngle={5}
+                  dataKey="value"
+                  label
+                  onClick={(data) => handleCategoryClick(data)}
+                >
+                  {pieChartData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          <Table
+            dataSource={dataSource}
+            columns={columns}
+            rowKey="key"
+            pagination={{ pageSize: 5, position: ["bottomRight"] }}
+            scroll={false}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+            <div style={{ color: '#888', fontWeight: 500, marginBottom: "20px" }}>
+              Total Days: {dataSource.length}
+            </div>
+          </div>
+
+          <AnimatePresence mode="wait">
+            {selectedDate && groupedFilteredExpenses[selectedDate] && (
+              <motion.div
+                key={selectedDate}
+                initial={{ opacity: 0, y: 40, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -40, scale: 0.95 }}
+                transition={{ duration: 0.35 }}
                 style={{
-                  marginBottom: "14px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  background: "#f7f7f7",
-                  borderRadius: 6,
-                  padding: "10px 14px",
-                  boxShadow: "0 1px 4px rgba(0,0,0,0.03)",
+                  padding: "20px",
+                  border: "1px solid #e0e0e0",
+                  borderRadius: "8px",
+                  position: "relative",
+                  background: "#fff",
+                  boxShadow: "0 2px 16px rgba(0,0,0,0.08)",
+                  marginBottom: 24,
+                  minHeight: 120,
                 }}
               >
-                <div>
-                  <div style={{ fontWeight: 500 }}>{expense.title}</div>
-                  <div style={{ color: "#1890ff", fontWeight: 600 }}>
-                    ₹{expense.amount}
-                  </div>
-                </div>
-                <Space>
-                  <Button
-                    type="text"
-                    icon={
-                      <EditOutlined
-                        style={{ color: "#1890ff", fontSize: 20 }}
-                      />
-                    }
-                    onClick={() => handleEditExpense(expense)}
-                    style={{
-                      background: "transparent",
-                      border: "none",
-                      boxShadow: "none",
-                    }}
-                  />
+                <CloseCircleOutlined
+                  style={{
+                    position: "absolute",
+                    top: "12px",
+                    right: "12px",
+                    cursor: "pointer",
+                    fontSize: "22px",
+                    color: "#888",
+                    zIndex: 1,
+                    marginBottom: "40px",
+                  }}
+                  onClick={handleCloseContainer}
+                />
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: 18,
+                    flexWrap: "wrap",
+                    gap: "12px",
+                    marginTop: "40px",
+                  }}
+                >
+                  <h3 style={{ margin: 0, fontWeight: 600, fontSize: 20 }}>
+                    Expenses for <span style={{ color: "#178fff", marginLeft: "20px", fontWeight: "900"}}>{moment(selectedDate, 'YYYY-MM-DD').format('D MMMM')}</span>
+                  </h3>
                   <Popconfirm
-                    title="Delete this expense?"
-                    onConfirm={() => handleDeleteExpense(expense.id, selectedDate)}
+                    title="Delete all expenses for this day?"
+                    onConfirm={() => handleDeleteAllForDate(selectedDate)}
                     okText="Yes"
                     cancelText="No"
                     placement="top"
@@ -694,138 +832,442 @@ function Dashboard() {
                       wordWrap: "break-word",
                       textAlign: "center",
                     }}
-                    okButtonProps={{
-                      style: {
-                        width: "80px",
-                        marginRight: "8px",
-                        color: "white",
-                      },
-                    }}
-                    cancelButtonProps={{
-                      style: { width: "80px", color: "white" },
-                    }}
+                    okButtonProps={{ style: { width: "80px", marginRight: "8px", color: "white" } }}
+                    cancelButtonProps={{ style: { width: "80px", color: "white" } }}
                   >
                     <Button
-                      type="text"
-                      icon={
-                        <DeleteOutlined
-                          style={{ color: "#ff4d4f", fontSize: 20 }}
-                        />
-                      }
+                      type="primary"
+                      danger
+                      icon={<DeleteOutlined style={{ color: "white" }} />}
                       style={{
-                        background: "transparent",
-                        border: "none",
-                        boxShadow: "none",
-                        marginLeft: 8,
+                        background: "#ff4d4f",
+                        borderColor: "#ff4d4f",
+                        color: "white",
+                        fontWeight: 500,
+                        marginLeft: 0,
                       }}
-                    />
+                      size="small"
+                    >
+                      Delete All
+                    </Button>
                   </Popconfirm>
-                </Space>
-              </div>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+                </div>
+                {groupedFilteredExpenses[selectedDate].map((expense) => (
+                  <div
+                    key={expense.id}
+                    style={{
+                      marginBottom: "14px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      background: "#f7f7f7",
+                      borderRadius: 6,
+                      padding: "10px 14px",
+                      boxShadow: "0 1px 4px rgba(0,0,0,0.03)",
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 500 }}>{expense.title}</div>
+                      <div style={{ color: "#1890ff", fontWeight: 600 }}>
+                        ₹{expense.amount}
+                      </div>
+                    </div>
+                    <Space>
+                      <Button
+                        type="text"
+                        icon={
+                          <EditOutlined
+                            style={{ color: "#1890ff", fontSize: 20 }}
+                          />
+                        }
+                        onClick={() => handleEditExpense(expense)}
+                        style={{
+                          background: "transparent",
+                          border: "none",
+                          boxShadow: "none",
+                        }}
+                      />
+                      <Popconfirm
+                        title="Delete this expense?"
+                        onConfirm={() => handleDeleteExpense(expense.id, selectedDate)}
+                        okText="Yes"
+                        cancelText="No"
+                        placement="top"
+                        overlayStyle={{
+                          maxWidth: "200px",
+                          wordWrap: "break-word",
+                          textAlign: "center",
+                        }}
+                        okButtonProps={{
+                          style: {
+                            width: "80px",
+                            marginRight: "8px",
+                            color: "white",
+                          },
+                        }}
+                        cancelButtonProps={{
+                          style: { width: "80px", color: "white" },
+                        }}
+                      >
+                        <Button
+                          type="text"
+                          icon={
+                            <DeleteOutlined
+                              style={{ color: "#ff4d4f", fontSize: 20 }}
+                            />
+                          }
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            boxShadow: "none",
+                            marginLeft: 8,
+                          }}
+                        />
+                      </Popconfirm>
+                    </Space>
+                  </div>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-      <Modal
-        title="Edit Expense"
-        visible={isModalVisible}
-        onOk={handleEditSubmit}
-        onCancel={handleModalClose}
-        okText="Save"
-        cancelText="Cancel"
-      >
-        <Form form={form} layout="vertical">
-          <Form.Item
-            name="title"
-            label="Title"
-            rules={[{ required: true, message: "Please enter a title!" }]}
+          <Modal
+            title="Edit Expense"
+            visible={isModalVisible}
+            onOk={handleEditSubmit}
+            onCancel={handleModalClose}
+            okText="Save"
+            cancelText="Cancel"
           >
-            <Input placeholder="Title" />
-          </Form.Item>
-          <Form.Item
-            name="amount"
-            label="Amount"
-            rules={[{ required: true, message: "Please enter an amount!" }]}
+            <Form form={form} layout="vertical">
+              <Form.Item
+                name="title"
+                label="Title"
+                rules={[{ required: true, message: "Please enter a title!" }]}
+              >
+                <Input placeholder="Title" />
+              </Form.Item>
+              <Form.Item
+                name="amount"
+                label="Amount"
+                rules={[{ required: true, message: "Please enter an amount!" }]}
+              >
+                <Input type="number" placeholder="Amount" />
+              </Form.Item>
+              <Form.Item
+                name="category"
+                label="Category"
+                rules={[{ required: true, message: "Please select a category!" }]}
+              >
+                <Select placeholder="Select category">
+                  <Select.Option value="Food">Food</Select.Option>
+                  <Select.Option value="Transport">Transport</Select.Option>
+                  <Select.Option value="Entertainment">Entertainment</Select.Option>
+                  <Select.Option value="Utilities">Utilities</Select.Option>
+                  <Select.Option value="Others">Others</Select.Option>
+                </Select>
+              </Form.Item>
+              <Form.Item
+                name="date"
+                label="Date"
+                rules={[{ required: true, message: "Please select a date!" }]}
+              >
+                <ReactDatePicker
+                  selected={form.getFieldValue('date') ? form.getFieldValue('date').toDate() : null}
+                  onChange={date => form.setFieldsValue({ date: date ? moment(date) : null })}
+                  dateFormat="yyyy-MM-dd"
+                  className="ant-input"
+                  style={{ width: "100%" }}
+                />
+              </Form.Item>
+            </Form>
+          </Modal>
+          
+          <Modal
+            title={`Expenses for ${selectedCategory}`}
+            visible={isCategoryModalVisible}
+            onCancel={handleCategoryModalClose}
+            footer={null}
+            width={600}
+            className="category-modal"
           >
-            <Input type="number" placeholder="Amount" />
-          </Form.Item>
-          <Form.Item
-            name="category"
-            label="Category"
-            rules={[{ required: true, message: "Please select a category!" }]}
-          >
-            <Select placeholder="Select category">
-              <Select.Option value="Food">Food</Select.Option>
-              <Select.Option value="Transport">Transport</Select.Option>
-              <Select.Option value="Entertainment">Entertainment</Select.Option>
-              <Select.Option value="Utilities">Utilities</Select.Option>
-              <Select.Option value="Others">Others</Select.Option>
-            </Select>
-          </Form.Item>
-          <Form.Item
-            name="date"
-            label="Date"
-            rules={[{ required: true, message: "Please select a date!" }]}
-          >
-            <ReactDatePicker
-              selected={form.getFieldValue('date') ? form.getFieldValue('date').toDate() : null}
-              onChange={date => form.setFieldsValue({ date: date ? moment(date) : null })}
-              dateFormat="yyyy-MM-dd"
-              className="ant-input"
-              style={{ width: "100%" }}
+            <div style={{ marginBottom: "16px" }}>
+              <ReactDatePicker
+                selected={selectedMonth.toDate()}
+                onChange={(date) => setSelectedMonth(moment(date))}
+                dateFormat="MMMM yyyy"
+                showMonthYearPicker
+                className="ant-input"
+              />
+            </div>
+            <Table
+              dataSource={filteredCategoryExpenses}
+              columns={[
+                { title: 'Title', dataIndex: 'title', key: 'title' },
+                { title: 'Amount', dataIndex: 'amount', key: 'amount', render: (amount) => `₹${parseFloat(amount).toFixed(2)}` },
+                { title: 'Date', dataIndex: 'date', key: 'date', render: (date) => moment(date).format('DD MMMM, YYYY'), sorter: (a, b) => new Date(a.date) - new Date(b.date), defaultSortOrder: 'descend' },
+              ]}
+              rowKey="id"
+              pagination={{ pageSize: 5 }}
             />
-          </Form.Item>
-        </Form>
-      </Modal>
-      
-      <Modal
-        title={`Expenses for ${selectedCategory}`}
-        visible={isCategoryModalVisible}
-        onCancel={handleCategoryModalClose}
-        footer={null}
-        width={600}
-        className="category-modal"
-      >
-        <div style={{ marginBottom: "16px" }}>
-          <ReactDatePicker
-            selected={selectedMonth.toDate()}
-            onChange={(date) => setSelectedMonth(moment(date))}
-            dateFormat="MMMM yyyy"
-            showMonthYearPicker
-            className="ant-input"
-          />
-        </div>
-        <Table
-          dataSource={filteredCategoryExpenses}
-          columns={[
-            { title: 'Title', dataIndex: 'title', key: 'title' },
-            { title: 'Amount', dataIndex: 'amount', key: 'amount', render: (amount) => `₹${parseFloat(amount).toFixed(2)}` },
-            { title: 'Date', dataIndex: 'date', key: 'date', render: (date) => moment(date).format('DD MMMM, YYYY'), sorter: (a, b) => new Date(a.date) - new Date(b.date), defaultSortOrder: 'descend' },
-          ]}
-          rowKey="id"
-          pagination={{ pageSize: 5 }}
-        />
-      </Modal>
+          </Modal>
 
-      <Modal
-        open={showCopyPrevModal}
-        onCancel={handleDismissCopyModal}
-        onOk={handleCopyPrevBudget}
-        okText="Copy Previous Month's Budget"
-        cancelText="No, I'll Set Manually"
-        title="No Budget Set for This Month"
-        closable={false}
-        maskClosable={false}
-        keyboard={false}
-      >
-        <div>
-          Do you want to copy the previous month's budget?
+          <Modal
+            open={showCopyPrevModal}
+            onCancel={handleDismissCopyModal}
+            onOk={handleCopyPrevBudget}
+            okText="Copy Previous Month's Budget"
+            cancelText="No, I'll Set Manually"
+            title="No Budget Set for This Month"
+            closable={false}
+            maskClosable={false}
+            keyboard={false}
+          >
+            <div>
+              Do you want to copy the previous month's budget?
+            </div>
+          </Modal>
+        </>
+      )}
+      {/* Credits Tab */}
+      {activeTab === 'credits' && (
+        <div style={{ maxWidth: 500, margin: '0 auto', background: '#f9f9f9', borderRadius: 10, padding: 24, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+          <h2 style={{ textAlign: 'center', marginBottom: 24 }}>Credits</h2>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+            <ReactDatePicker
+              selected={selectedCreditMonth.toDate()}
+              onChange={date => setSelectedCreditMonth(moment(date))}
+              dateFormat="MMMM yyyy"
+              showMonthYearPicker
+              className="ant-input credit-datepicker"
+              maxDate={new Date()}
+              style={{ minWidth: 180, border: 'none', borderRadius: 20 }}
+            />
+          </div>
+          <div style={{ fontWeight: 600, fontSize: 18, color: '#1890ff', marginBottom: 16, textAlign: 'center' }}>
+            Total Credited This Month: ₹{totalCredits.toFixed(2)}
+          </div>
+          <form onSubmit={handleAddCredit} style={{ marginBottom: 24 }}>
+            <div style={{ marginBottom: 12 }}>
+              <InputNumber
+                value={creditForm.amount}
+                onChange={val => handleCreditInput('amount', val)}
+                placeholder="Amount"
+                min={0}
+                style={{ width: '100%' }}
+                required
+              />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <input
+                type="text"
+                value={creditForm.description}
+                onChange={e => handleCreditInput('description', e.target.value)}
+                placeholder="Description (optional)"
+                style={{ width: '100%', height: 40, borderRadius: 6, border: '1px solid #d9d9d9', padding: '8px 12px', fontSize: 16 }}
+              />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <DatePicker
+                value={creditForm.date}
+                onChange={date => handleCreditInput('date', date)}
+                format="YYYY-MM-DD"
+                style={{ width: '100%', }}
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={creditLoading}
+              style={{ width: '100%', height: 44, background: '#1890ff', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 16 }}
+            >
+              {creditLoading ? 'Adding...' : 'Add Credit'}
+            </button>
+          </form>
+          <div style={{ fontWeight: 500, marginBottom: 8 }}>Credits This Month</div>
+          <div style={{ maxHeight: 220, overflowY: 'auto' }}>
+            {credits.length === 0 ? (
+              <div style={{ color: '#888', textAlign: 'center' }}>No credits yet.</div>
+            ) : (
+              credits.sort((a, b) => new Date(b.date) - new Date(a.date)).map(credit => (
+                <div key={credit.id} style={{ background: '#fff', borderRadius: 6, padding: '10px 14px', marginBottom: 10, boxShadow: '0 1px 4px rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontWeight: 500 }}>₹{parseFloat(credit.amount).toFixed(2)}</div>
+                    <div style={{ color: '#888', fontSize: 13 }}>{credit.description}</div>
+                    <div style={{ color: '#1890ff', fontSize: 13 }}>{moment(credit.date, 'YYYY-MM-DD').format('DD MMM, YYYY')}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <EditOutlined style={{ color: '#1890ff', fontSize: 18, cursor: 'pointer' }} onClick={() => handleEditCredit(credit)} />
+                    <Popconfirm
+                      title="Delete this credit?"
+                      onConfirm={() => handleDeleteCredit(credit)}
+                      okText="Yes"
+                      cancelText="No"
+                      placement="top"
+                    >
+                      <DeleteOutlined style={{ color: '#ff4d4f', fontSize: 18, cursor: 'pointer' }} />
+                    </Popconfirm>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+          <Modal
+            title="Edit Credit"
+            open={editModalVisible}
+            onCancel={() => setEditModalVisible(false)}
+            onOk={handleEditCreditSubmit}
+            okText="Save"
+            cancelText="Cancel"
+            width={"90vw"}
+            style={{ maxWidth: 400, padding: 0 }}
+            bodyStyle={{ padding: 16 }}
+          >
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Amount</label>
+              <InputNumber
+                value={editCreditForm.amount}
+                onChange={val => handleEditCreditInput('amount', val)}
+                placeholder="Amount"
+                min={0}
+                style={{ width: '100%', fontSize: '1rem', height: 44, padding: '8px 12px', borderRadius: 8 }}
+                required
+              />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Description</label>
+              <Input
+                value={editCreditForm.description}
+                onChange={e => handleEditCreditInput('description', e.target.value)}
+                placeholder="Description (optional)"
+                style={{ width: '100%', fontSize: '1rem', height: 44, padding: '8px 12px', borderRadius: 8 }}
+              />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Date</label>
+              <DatePicker
+                value={editCreditForm.date}
+                onChange={date => handleEditCreditInput('date', date)}
+                format="YYYY-MM-DD"
+                style={{ width: '100%', fontSize: '1rem', height: 44, borderRadius: 8, padding: '8px 12px' }}
+                required
+              />
+            </div>
+            <style>{`
+              @media (max-width: 600px) {
+                .ant-modal {
+                  width: 95vw !important;
+                  max-width: 98vw !important;
+                  margin: 0 !important;
+                }
+                .ant-modal-content {
+                  padding: 10px !important;
+                }
+                .ant-modal-body {
+                  padding: 8px !important;
+                }
+                .ant-input, .ant-picker, .ant-input-number {
+                  font-size: 1rem !important;
+                  height: 44px !important;
+                  border-radius: 8px !important;
+                  padding: 8px 12px !important;
+                }
+                .ant-btn-primary {
+                  height: 44px !important;
+                  font-size: 1rem !important;
+                  border-radius: 8px !important;
+                }
+              }
+            `}</style>
+          </Modal>
         </div>
-      </Modal>
-
+      )}
+      {/* EMI Tab */}
+      {activeTab === 'emi' && (
+        <div style={{ maxWidth: 500, margin: '0 auto', background: '#f9f9f9', borderRadius: 10, padding: 24, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+          <h2 style={{ textAlign: 'center', marginBottom: 24 }}>EMI</h2>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+            <ReactDatePicker
+              selected={selectedCreditMonth.toDate()}
+              onChange={date => setSelectedCreditMonth(moment(date))}
+              dateFormat="MMMM yyyy"
+              showMonthYearPicker
+              className="ant-input credit-datepicker"
+              maxDate={new Date()}
+              style={{ minWidth: 180, border: 'none', borderRadius: 20 }}
+            />
+          </div>
+          <div style={{ fontWeight: 600, fontSize: 18, color: '#1890ff', marginBottom: 16, textAlign: 'center' }}>
+            Total Credits: ₹{totalCredits.toFixed(2)}
+          </div>
+          <div style={{ fontWeight: 500, marginBottom: 8 }}>Add EMI</div>
+          <form onSubmit={handleAddEmi} style={{ marginBottom: 24 }}>
+            <div style={{ marginBottom: 12 }}>
+              <InputNumber
+                value={emiForm.amount}
+                onChange={val => handleEmiInput('amount', val)}
+                placeholder="Amount"
+                min={0}
+                style={{ width: '100%'}}
+                required
+              />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <Input
+                value={emiForm.description}
+                onChange={e => handleEmiInput('description', e.target.value)}
+                placeholder="Description (optional)"
+                style={{ width: '100%', }}
+              />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <DatePicker
+                value={emiForm.date}
+                onChange={date => handleEmiInput('date', date)}
+                format="YYYY-MM-DD"
+                style={{ width: '100%'}}
+                disabledDate={current => current && current > moment()}
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={emiLoading}
+              style={{ width: '100%', height: 44, background: '#1890ff', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 16 }}
+            >
+              {emiLoading ? 'Adding...' : 'Add EMI'}
+            </button>
+          </form>
+          <div style={{ fontWeight: 500, marginBottom: 8 }}>EMIs This Month</div>
+          <div style={{ maxHeight: 220, overflowY: 'auto' }}>
+            {emiList.length === 0 ? (
+              <div style={{ color: '#888', textAlign: 'center' }}>No EMIs yet.</div>
+            ) : (
+              emiList.sort((a, b) => new Date(b.date) - new Date(a.date)).map(emi => (
+                <div key={emi.id} style={{ background: '#fff', borderRadius: 6, padding: '10px 14px', marginBottom: 10, boxShadow: '0 1px 4px rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontWeight: 500 }}>₹{parseFloat(emi.amount).toFixed(2)}</div>
+                    <div style={{ color: '#888', fontSize: 13 }}>{emi.description}</div>
+                    <div style={{ color: '#1890ff', fontSize: 13 }}>{moment(emi.date, 'YYYY-MM-DD').format('DD MMM, YYYY')}</div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+          <div style={{ fontWeight: 600, marginTop: 16, color: '#ff4d4f' }}>EMI Deducted: ₹{emiDeducted.toFixed(2)}</div>
+          <div style={{ fontWeight: 600, marginTop: 4, color: '#1890ff' }}>Remaining Credits: ₹{remainingCredits.toFixed(2)}</div>
+        </div>
+      )}
       <style>{`
         .dashboard-month-picker {
+          border: none !important;
+          border-radius: 20px !important;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+          padding: 6px 16px;
+          font-size: 1rem;
+          background: #fff;
+        }
+        .credit-datepicker {
           border: none !important;
           border-radius: 20px !important;
           box-shadow: 0 1px 4px rgba(0,0,0,0.04);
