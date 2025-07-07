@@ -302,3 +302,21 @@ h1, h2 {
     width: 100%;
   }
 }
+
+.credit-datepicker {
+  border: none !important;
+  border-radius: 20px !important;
+  box-shadow: 0 4px 16px rgba(24, 144, 255, 0.18) !important;
+  padding: 6px 16px;
+  font-size: 1rem;
+  background: #fff;
+}
+
+.dashboard-month-picker {
+  border: none !important;
+  border-radius: 20px !important;
+  box-shadow: 0 4px 16px rgba(24, 144, 255, 0.18) !important;
+  padding: 6px 16px;
+  font-size: 1rem;
+  background: #fff;
+}
