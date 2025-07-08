@@ -320,3 +320,52 @@ h1, h2 {
   font-size: 1rem;
   background: #fff;
 }
+
+/* Investment Insights Page Responsive Styles */
+@media (max-width: 900px) {
+  .ant-card {
+    margin-bottom: 16px !important;
+  }
+  .ant-row {
+    flex-direction: column !important;
+  }
+}
+@media (max-width: 768px) {
+  .ant-layout-header {
+    padding: 0 8px !important;
+  }
+  .ant-menu-horizontal {
+    display: none !important;
+  }
+  .ant-drawer .ant-menu {
+    width: 100vw !important;
+    border: none !important;
+  }
+  .ant-card {
+    margin-bottom: 16px !important;
+  }
+  .ant-row {
+    flex-direction: column !important;
+  }
+}
+
+/* Remove background color from MenuOutlined icon button in mobile view */
+@media (max-width: 768px) {
+  .ant-btn.ant-btn-text.ant-btn-icon-only {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    width: auto !important;
+    padding: 0 !important;
+    margin-right: 16px !important;
+    min-width: 0 !important;
+    height: 40px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ant-btn:not(.ant-btn-icon-only) {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+}

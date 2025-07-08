@@ -16,6 +16,9 @@ import { db } from './firebase';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import MonthHistory from './components/MonthHistory';
+import InvestmentInsights from './components/InvestmentInsights';
+import { MenuOutlined } from '@ant-design/icons';
+import { Drawer } from 'antd';
 
 const { Header, Content } = Layout;
 
@@ -25,6 +28,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const location = useLocation(); // Get the current location
   const navigate = useNavigate(); // Use for navigation
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Set the current page based on the route
   let currentPage = 'dashboard';
@@ -93,7 +97,11 @@ function App() {
     { key: 'expenses', label: 'Expenses' },
     { key: 'dashboard', label: 'Dashboard' },
     { key: 'month-history', label: 'Month History' },
+    { key: 'investment-insights', label: 'Investment & Insights' },
   ];
+
+  // Responsive navigation
+  const isMobile = window.innerWidth < 768;
 
   if (loading) {
     return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span>Loading...</span></div>;
@@ -106,22 +114,50 @@ function App() {
       {location.pathname !== '/signup' && location.pathname !== '/signin' && (
         <Header style={{ background: '#fff', padding: '0 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-            <Menu
-              theme="light"
-              mode="horizontal"
-              selectedKeys={[currentPage]}
-              items={menuItems}
-              onClick={({ key }) => {
-                if (key === 'expenses') {
-                  navigate('/expenses'); // Use navigate instead of window.location.href
-                } else if (key === 'dashboard') {
-                  navigate('/dashboard'); // Use navigate instead of window.location.href
-                } else if (key === 'month-history') {
-                  navigate('/month-history'); // Use navigate instead of window.location.href
-                }
-              }}
-              style={{ flex: 1, borderBottom: 'none' }}
-            />
+            {isMobile ? (
+              <>
+                <Button
+                  type="text"
+                  icon={<MenuOutlined style={{ fontSize: 24 }} />}
+                  onClick={() => setMobileMenuOpen(true)}
+                  style={{ marginRight: 16 }}
+                />
+                <Drawer
+                  title="Menu"
+                  placement="left"
+                  onClose={() => setMobileMenuOpen(false)}
+                  open={mobileMenuOpen}
+                  bodyStyle={{ padding: 0 }}
+                >
+                  <Menu
+                    mode="vertical"
+                    selectedKeys={[currentPage]}
+                    items={menuItems}
+                    onClick={({ key }) => {
+                      setMobileMenuOpen(false);
+                      if (key === 'expenses') navigate('/expenses');
+                      else if (key === 'dashboard') navigate('/dashboard');
+                      else if (key === 'month-history') navigate('/month-history');
+                      else if (key === 'investment-insights') navigate('/investment-insights');
+                    }}
+                  />
+                </Drawer>
+              </>
+            ) : (
+              <Menu
+                theme="light"
+                mode="horizontal"
+                selectedKeys={[currentPage]}
+                items={menuItems}
+                onClick={({ key }) => {
+                  if (key === 'expenses') navigate('/expenses');
+                  else if (key === 'dashboard') navigate('/dashboard');
+                  else if (key === 'month-history') navigate('/month-history');
+                  else if (key === 'investment-insights') navigate('/investment-insights');
+                }}
+                style={{ flex: 1, borderBottom: 'none' }}
+              />
+            )}
             {user && (
               <Dropdown
                 overlay={
@@ -176,6 +212,10 @@ function App() {
           <Route
             path="/month-history"
             element={user ? <MonthHistory /> : <Navigate to="/signin" />}
+          />
+          <Route
+            path="/investment-insights"
+            element={user ? <InvestmentInsights /> : <Navigate to="/signin" />}
           />
         </Routes>
       </Content>
