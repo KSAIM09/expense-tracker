@@ -47,16 +47,42 @@ function Signin() {
           name="email"
           rules={[{ required: true, message: 'Please input your email!' }]}
         >
-          <Input placeholder="Email" style={{ height: '40px', padding: '8px 12px' }} />
+          <Input
+            placeholder="Email"
+            style={{
+              background: 'var(--glass-bg)',
+              border: 'var(--glass-border)',
+              borderRadius: 12,
+              boxShadow: '0 2px 8px rgba(108,99,255,0.08)',
+              padding: '10px 16px',
+              fontSize: 16,
+              transition: 'box-shadow 0.3s, border 0.3s',
+              color: 'var(--foreground)',
+            }}
+            className="fade-in"
+          />
         </Form.Item>
         <Form.Item
           name="password"
           rules={[{ required: true, message: 'Please input your password!' }]}
         >
-          <Input.Password placeholder="Password" style={{ height: '40px' }} />
+          <Input.Password
+            placeholder="Password"
+            style={{
+              background: 'var(--glass-bg)',
+              border: 'var(--glass-border)',
+              borderRadius: 12,
+              boxShadow: '0 2px 8px rgba(108,99,255,0.08)',
+              padding: '10px 16px',
+              fontSize: 16,
+              transition: 'box-shadow 0.3s, border 0.3s',
+              color: 'var(--foreground)',
+            }}
+            className="fade-in"
+          />
         </Form.Item>
         <Form.Item>
-          <Button type="primary" htmlType="submit" loading={loading} block style={{ height: '48px' }}>
+          <Button type="primary" htmlType="submit" loading={loading} block style={{ height: '48px', borderRadius: 14, fontWeight: 700, fontSize: 18, background: 'var(--gradient)', boxShadow: '0 4px 16px rgba(108,99,255,0.18)', transition: 'background 0.3s, box-shadow 0.3s' }} className="fade-in">
             Sign In
           </Button>
         </Form.Item>
@@ -65,7 +91,8 @@ function Signin() {
         type="default"
         icon={<GoogleOutlined />}
         onClick={handleGoogleSignIn}
-        style={{ width: '100%', height: '48px', marginTop: '-10px' }}
+        style={{ width: '100%', height: '48px', marginTop: '-10px', borderRadius: 14, fontWeight: 700, fontSize: 18, background: 'var(--glass-bg)', boxShadow: '0 2px 8px rgba(108,99,255,0.08)', color: 'var(--foreground)', border: 'var(--glass-border)', transition: 'background 0.3s, box-shadow 0.3s' }}
+        className="fade-in"
       >
         Sign In with Google
       </Button>

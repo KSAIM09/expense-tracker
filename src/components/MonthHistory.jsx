@@ -5,6 +5,7 @@ import { Card, Button, Collapse, Empty } from 'antd';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import moment from 'moment';
 import { motion, AnimatePresence } from 'framer-motion';
+import { HistoryOutlined } from '@ant-design/icons';
 
 function MonthHistory() {
   const [monthlyExpenses, setMonthlyExpenses] = useState({});
@@ -48,7 +49,7 @@ function MonthHistory() {
   };
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: 24 }}>
+    <div style={{ maxWidth: 900, margin: '0 auto', padding: 24 }} className="glass fade-in">
       <style>{`
         @media (max-width: 600px) {
           .mh-card-row-header, .mh-card-row {
@@ -76,7 +77,7 @@ function MonthHistory() {
           }
         }
       `}</style>
-      <h1 style={{ marginBottom: 24 }}>Month History</h1>
+      <h1 style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 10 }}><HistoryOutlined style={{ color: '#6c63ff', fontSize: 32 }} />Month History</h1>
       <div style={{ marginBottom: 32 }}>
         <h3>Monthly Expenses Overview</h3>
         {chartData.length > 0 ? (

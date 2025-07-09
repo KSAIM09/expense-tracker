@@ -35,6 +35,7 @@ import {
 import ReactDatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { toast } from "react-toastify";
+import { BarChartOutlined, PieChartOutlined, WalletOutlined } from '@ant-design/icons';
 
 function Dashboard() {
   const [expenses, setExpenses] = useState([]);
@@ -580,6 +581,7 @@ function Dashboard() {
         minHeight: "100vh",
         boxSizing: "border-box",
       }}
+      className="glass fade-in"
     >
       {/* Navbar Tabs */}
       <Tabs
@@ -587,10 +589,11 @@ function Dashboard() {
         onChange={setActiveTab}
         style={{ marginBottom: 24 }}
         items={[
-          { key: 'tracker', label: 'Tracker' },
-          { key: 'credits', label: 'Credits' },
-          { key: 'emi', label: 'EMI' },
+          { key: 'tracker', label: <span><PieChartOutlined style={{ color: '#6c63ff', marginRight: 6 }} />Tracker</span> },
+          { key: 'credits', label: <span><WalletOutlined style={{ color: '#ffb86c', marginRight: 6 }} />Credits</span> },
+          { key: 'emi', label: <span><BarChartOutlined style={{ color: '#52c41a', marginRight: 6 }} />EMI</span> },
         ]}
+        className="glass"
       />
       <AnimatePresence mode="wait">
         {activeTab === 'tracker' && (
@@ -600,8 +603,10 @@ function Dashboard() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 30 }}
             transition={{ duration: 0.3 }}
+            className="glass fade-in"
+            style={{ boxShadow: 'var(--card-shadow)', borderRadius: 'var(--card-radius)', background: 'var(--glass-bg)', marginBottom: 32 }}
           >
-            <h1 style={{ marginBottom: "24px" }}>Welcome, {userName}</h1>
+            <h1 style={{ marginBottom: "24px", display: 'flex', alignItems: 'center', gap: 10 }}><PieChartOutlined style={{ color: '#6c63ff', fontSize: 32 }} />Welcome, {userName}</h1>
             <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: 16 }}>
               <Button 
                 type="primary" 
@@ -1048,6 +1053,8 @@ function Dashboard() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -30 }}
             transition={{ duration: 0.3 }}
+            className="glass fade-in"
+            style={{ boxShadow: 'var(--card-shadow)', borderRadius: 'var(--card-radius)', background: 'var(--glass-bg)', marginBottom: 32 }}
           >
             <div style={{ maxWidth: 500, margin: '0 auto', background: '#f9f9f9', borderRadius: 10, padding: 24, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
               <h2 style={{ textAlign: 'center', marginBottom: 24 }}>Credits</h2>
@@ -1077,12 +1084,23 @@ function Dashboard() {
                   />
                 </div>
                 <div style={{ marginBottom: 12 }}>
-                  <input
-                    type="text"
+                  <Input
                     value={creditForm.description}
                     onChange={e => handleCreditInput('description', e.target.value)}
                     placeholder="Description (optional)"
-                    style={{ width: '100%', height: 40, borderRadius: 6, border: '1px solid #d9d9d9', padding: '8px 12px', fontSize: 16 }}
+                    style={{
+                      width: '100%',
+                      height: 40,
+                      background: 'var(--glass-bg)',
+                      border: 'var(--glass-border)',
+                      borderRadius: 12,
+                      boxShadow: '0 2px 8px rgba(108,99,255,0.08)',
+                      padding: '10px 16px',
+                      fontSize: 16,
+                      transition: 'box-shadow 0.3s, border 0.3s',
+                      color: 'var(--foreground)',
+                    }}
+                    className="fade-in"
                   />
                 </div>
                 <div style={{ marginBottom: 12 }}>
@@ -1090,8 +1108,18 @@ function Dashboard() {
                     value={creditForm.date}
                     onChange={date => handleCreditInput('date', date)}
                     format="YYYY-MM-DD"
-                    style={{ width: '100%', }}
-                    required
+                    style={{
+                      width: '100%',
+                      background: 'var(--glass-bg)',
+                      border: 'var(--glass-border)',
+                      borderRadius: 12,
+                      boxShadow: '0 2px 8px rgba(108,99,255,0.08)',
+                      padding: '10px 16px',
+                      fontSize: 16,
+                      transition: 'box-shadow 0.3s, border 0.3s',
+                      color: 'var(--foreground)',
+                    }}
+                    className="fade-in"
                   />
                 </div>
                 <button
@@ -1221,6 +1249,8 @@ function Dashboard() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -30 }}
             transition={{ duration: 0.3 }}
+            className="glass fade-in"
+            style={{ boxShadow: 'var(--card-shadow)', borderRadius: 'var(--card-radius)', background: 'var(--glass-bg)', marginBottom: 32 }}
           >
             <div style={{ maxWidth: 500, margin: '0 auto', background: '#f9f9f9', borderRadius: 10, padding: 24, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
               <h2 style={{ textAlign: 'center', marginBottom: 24 }}>EMI</h2>

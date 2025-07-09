@@ -87,9 +87,9 @@ function InvestmentInsights() {
   };
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 8px', minHeight: '100vh' }}>
-      <Title level={2} style={{ textAlign: 'center', marginBottom: 24, letterSpacing: 1 }}>
-        <BarChartOutlined style={{ color: '#1890ff', marginRight: 8 }} />
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 8px', minHeight: '100vh' }} className="glass fade-in">
+      <Title level={2} style={{ textAlign: 'center', marginBottom: 24, letterSpacing: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+        <BarChartOutlined style={{ color: '#1890ff', fontSize: 36 }} />
         Investment & Market Insights
       </Title>
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32 }}>
@@ -108,40 +108,44 @@ function InvestmentInsights() {
       <Row gutter={[24, 24]}>
         <Col xs={24} md={12}>
           <Card
-            title={<span><RiseOutlined style={{ color: '#52c41a' }} /> Market Trends</span>}
+            title={<span><RiseOutlined style={{ color: '#52c41a', fontSize: 22 }} /> Market Trends</span>}
             bordered={false}
-            style={sectionCardStyle}
+            style={{ ...sectionCardStyle, background: 'var(--glass-bg)', boxShadow: 'var(--card-shadow)', borderRadius: 'var(--card-radius)' }}
             headStyle={{ fontWeight: 700, fontSize: 18 }}
+            className="glass fade-in"
           >
             <MarketTrends />
           </Card>
         </Col>
         <Col xs={24} md={12}>
           <Card
-            title={<span><FundOutlined style={{ color: '#faad14' }} /> Top Gainers / Losers</span>}
+            title={<span><FundOutlined style={{ color: '#faad14', fontSize: 22 }} /> Top Gainers / Losers</span>}
             bordered={false}
-            style={sectionCardStyle}
+            style={{ ...sectionCardStyle, background: 'var(--glass-bg)', boxShadow: 'var(--card-shadow)', borderRadius: 'var(--card-radius)' }}
             headStyle={{ fontWeight: 700, fontSize: 18 }}
+            className="glass fade-in"
           >
             <TopGainersLosers />
           </Card>
         </Col>
         <Col xs={24} md={12}>
           <Card
-            title={<span><BulbOutlined style={{ color: '#1890ff' }} /> Investment Opportunities</span>}
+            title={<span><BulbOutlined style={{ color: '#1890ff', fontSize: 22 }} /> Investment Opportunities</span>}
             bordered={false}
-            style={sectionCardStyle}
+            style={{ ...sectionCardStyle, background: 'var(--glass-bg)', boxShadow: 'var(--card-shadow)', borderRadius: 'var(--card-radius)' }}
             headStyle={{ fontWeight: 700, fontSize: 18 }}
+            className="glass fade-in"
           >
             <InvestmentOpportunities />
           </Card>
         </Col>
         <Col xs={24} md={12}>
           <Card
-            title={<span><UserOutlined style={{ color: '#722ed1' }} /> Custom Suggestions</span>}
+            title={<span><UserOutlined style={{ color: '#722ed1', fontSize: 22 }} /> Custom Suggestions</span>}
             bordered={false}
-            style={sectionCardStyle}
+            style={{ ...sectionCardStyle, background: 'var(--glass-bg)', boxShadow: 'var(--card-shadow)', borderRadius: 'var(--card-radius)' }}
             headStyle={{ fontWeight: 700, fontSize: 18 }}
+            className="glass fade-in"
           >
             {suggestionLoading ? <Spin /> : (
               <div style={{ color: '#444', fontSize: 16, whiteSpace: 'pre-line', minHeight: 60 }}>{suggestion}</div>
@@ -151,10 +155,11 @@ function InvestmentInsights() {
       </Row>
       <Divider style={{ margin: '40px 0 24px 0' }} />
       <Card
-        title={<span><RobotOutlined style={{ color: '#fa541c' }} /> AI Insights</span>}
+        title={<span><RobotOutlined style={{ color: '#fa541c', fontSize: 22 }} /> AI Insights</span>}
         bordered={false}
-        style={{ ...sectionCardStyle, background: '#fff7e6', marginTop: 16 }}
+        style={{ ...sectionCardStyle, background: 'var(--glass-bg)', marginTop: 16, boxShadow: 'var(--card-shadow)', borderRadius: 'var(--card-radius)' }}
         headStyle={{ fontWeight: 700, fontSize: 18 }}
+        className="glass fade-in"
       >
         <div style={{ marginBottom: 16 }}>
           <Input.TextArea

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Input, Button, DatePicker, Select, Form } from 'antd';
-import { PlusCircleOutlined } from '@ant-design/icons';
+import { PlusCircleOutlined, FormOutlined } from '@ant-design/icons';
 import { ref, push, get, onValue } from 'firebase/database';
 import { db, auth } from '../firebase';
 import { toast } from 'react-toastify';
@@ -111,40 +111,92 @@ function ExpenseForm({ onAddExpense }) {
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
+      className="glass fade-in"
+      style={{ boxShadow: 'var(--card-shadow)', borderRadius: 'var(--card-radius)', background: 'var(--glass-bg)', padding: 32, marginBottom: 32 }}
     >
-      <h2 style={{ marginBottom: '16px' }}>Add New Expense</h2>
+      <h2 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: 8 }}><FormOutlined style={{ color: '#6c63ff', fontSize: 28 }} />Add New Expense</h2>
       <Form form={form} onFinish={onFinish} layout="vertical">
         <Form.Item
-          label="Title"
           name="title"
-          rules={[{ required: true, message: 'Please input the title!' }]}
-          style={{ marginBottom: '12px' }}
+          rules={[{ required: true, message: 'Please enter a title' }]}
         >
-          <Input placeholder="Enter title" required />
+          <Input
+            placeholder="Expense Title"
+            style={{
+              background: 'var(--glass-bg)',
+              border: 'var(--glass-border)',
+              borderRadius: 12,
+              boxShadow: '0 2px 8px rgba(108,99,255,0.08)',
+              padding: '10px 16px',
+              fontSize: 16,
+              transition: 'box-shadow 0.3s, border 0.3s',
+              color: 'var(--foreground)',
+            }}
+            className="fade-in"
+          />
         </Form.Item>
         <Form.Item
-          label="Amount"
           name="amount"
-          rules={[{ required: true, message: 'Please input the amount!' }]}
-          style={{ marginBottom: '12px' }}
+          rules={[{ required: true, message: 'Please enter an amount' }]}
         >
-          <Input type="number" placeholder="Enter amount" required />
+          <Input
+            type="number"
+            placeholder="Amount (₹)"
+            style={{
+              background: 'var(--glass-bg)',
+              border: 'var(--glass-border)',
+              borderRadius: 12,
+              boxShadow: '0 2px 8px rgba(108,99,255,0.08)',
+              padding: '10px 16px',
+              fontSize: 16,
+              transition: 'box-shadow 0.3s, border 0.3s',
+              color: 'var(--foreground)',
+            }}
+            className="fade-in"
+          />
         </Form.Item>
         <Form.Item
-          label="Date"
           name="date"
-          rules={[{ required: true, message: 'Please select the date!' }]}
-          style={{ marginBottom: '12px' }}
+          rules={[{ required: true, message: 'Please select a date' }]}
         >
-          <DatePicker style={{ width: '100%' }} required />
+          <DatePicker
+            style={{
+              width: '100%',
+              background: 'var(--glass-bg)',
+              border: 'var(--glass-border)',
+              borderRadius: 12,
+              boxShadow: '0 2px 8px rgba(108,99,255,0.08)',
+              padding: '10px 16px',
+              fontSize: 16,
+              transition: 'box-shadow 0.3s, border 0.3s',
+              color: 'var(--foreground)',
+            }}
+            className="fade-in"
+          />
         </Form.Item>
         <Form.Item
-          label="Category"
           name="category"
-          rules={[{ required: true, message: 'Please select a category!' }]}
-          style={{ marginBottom: '12px' }}
+          rules={[{ required: true, message: 'Please select a category' }]}
         >
-          <Select placeholder="Select category" required>
+          <Select
+            placeholder="Category"
+            style={{
+              background: 'var(--glass-bg)',
+              border: 'var(--glass-border)',
+              borderRadius: 12,
+              boxShadow: '0 2px 8px rgba(108,99,255,0.08)',
+              fontSize: 16,
+              transition: 'box-shadow 0.3s, border 0.3s',
+              color: 'var(--foreground)',
+            }}
+            className="fade-in"
+            dropdownStyle={{
+              background: 'var(--glass-bg)',
+              borderRadius: 12,
+              boxShadow: '0 4px 16px rgba(108,99,255,0.12)',
+              color: 'var(--foreground)',
+            }}
+          >
             <Select.Option value="Food">Food</Select.Option>
             <Select.Option value="Transport">Transport</Select.Option>
             <Select.Option value="Entertainment">Entertainment</Select.Option>
@@ -152,13 +204,22 @@ function ExpenseForm({ onAddExpense }) {
             <Select.Option value="Others">Others</Select.Option>
           </Select>
         </Form.Item>
-        <Form.Item style={{ marginBottom: '12px' }}>
+        <Form.Item>
           <Button
             type="primary"
             htmlType="submit"
-            icon={<PlusCircleOutlined />}
-            style={{ width: '100%', height: '48px', color: "white" }}
             loading={loading}
+            block
+            style={{
+              height: '48px',
+              borderRadius: 14,
+              fontWeight: 700,
+              fontSize: 18,
+              background: 'var(--gradient)',
+              boxShadow: '0 4px 16px rgba(108,99,255,0.18)',
+              transition: 'background 0.3s, box-shadow 0.3s',
+            }}
+            className="fade-in"
           >
             Add Expense
           </Button>

@@ -5,6 +5,7 @@ import { DatePicker, Row, Col, Button, message, Popconfirm } from 'antd';
 import ExpenseItem from './ExpenseItem';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DeleteOutlined } from '@ant-design/icons';
+import { UnorderedListOutlined } from '@ant-design/icons';
 
 function ExpenseList() {
   const [expenses, setExpenses] = useState([]);
@@ -91,10 +92,13 @@ function ExpenseList() {
   };
 
   return (
-    <div>
+    <div
+      className="glass fade-in"
+      style={{ boxShadow: 'var(--card-shadow)', borderRadius: 'var(--card-radius)', background: 'var(--glass-bg)', padding: 32, marginBottom: 32 }}
+    >
       <Row justify="space-between" align="middle" style={{ marginBottom: '20px', marginTop: '20px' }}>
         <Col>
-          <h2 style={{ margin: 0 }}>Recent Expenses</h2>
+          <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}><UnorderedListOutlined style={{ color: '#6c63ff', fontSize: 26 }} />Recent Expenses</h2>
         </Col>
         <Col>
           <DatePicker
