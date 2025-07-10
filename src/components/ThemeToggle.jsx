@@ -6,8 +6,13 @@ function ThemeToggle() {
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
 
   useEffect(() => {
-    document.body.className = theme;
-    localStorage.setItem('theme', theme);
+    if (theme === 'dark') {
+      document.body.classList.add('dark-theme');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.body.classList.remove('dark-theme');
+      localStorage.setItem('theme', 'light');
+    }
   }, [theme]);
 
   const toggleTheme = () => {

@@ -181,20 +181,20 @@ function ExpenseForm({ onAddExpense }) {
           <Select
             placeholder="Category"
             style={{
-              background: 'var(--glass-bg)',
-              border: 'var(--glass-border)',
+              background: '#fff',
+              border: '1.5px solid #e0e7ef',
               borderRadius: 12,
-              boxShadow: '0 2px 8px rgba(108,99,255,0.08)',
+              boxShadow: '0 2px 8px rgba(31,38,135,0.08)',
               fontSize: 16,
-              transition: 'box-shadow 0.3s, border 0.3s',
-              color: 'var(--foreground)',
+              color: '#222',
+              width: '100%',
             }}
             className="fade-in"
             dropdownStyle={{
-              background: 'var(--glass-bg)',
+              background: '#fff',
               borderRadius: 12,
-              boxShadow: '0 4px 16px rgba(108,99,255,0.12)',
-              color: 'var(--foreground)',
+              boxShadow: '0 4px 16px rgba(31,38,135,0.12)',
+              color: '#222',
             }}
           >
             <Select.Option value="Food">Food</Select.Option>

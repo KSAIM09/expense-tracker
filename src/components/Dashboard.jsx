@@ -634,7 +634,18 @@ function Dashboard() {
                 showMonthYearPicker
                 className="ant-input dashboard-month-picker"
                 maxDate={new Date()}
-                style={{ minWidth: 180, border: 'none', borderRadius: 20 }}
+                style={{
+                  background: '#fff',
+                  border: '1.5px solid #e0e7ef',
+                  color: '#222',
+                  borderRadius: 12,
+                  boxShadow: '0 2px 8px rgba(31,38,135,0.08)',
+                  padding: '10px 16px',
+                  fontSize: 16,
+                  width: '100%',
+                  maxWidth: '100%',
+                  overflowX: 'auto',
+                }}
               />
             </div>
 
@@ -1066,7 +1077,18 @@ function Dashboard() {
                   showMonthYearPicker
                   className="ant-input credit-datepicker"
                   maxDate={new Date()}
-                  style={{ minWidth: 180, border: 'none', borderRadius: 20 }}
+                  style={{
+                    background: '#fff',
+                    border: '1.5px solid #e0e7ef',
+                    color: '#222',
+                    borderRadius: 12,
+                    boxShadow: '0 2px 8px rgba(31,38,135,0.08)',
+                    padding: '10px 16px',
+                    fontSize: 16,
+                    width: '100%',
+                    maxWidth: '100%',
+                    overflowX: 'auto',
+                  }}
                 />
               </div>
               <div style={{ fontWeight: 600, fontSize: 18, color: '#1890ff', marginBottom: 16, textAlign: 'center' }}>
@@ -1079,7 +1101,7 @@ function Dashboard() {
                     onChange={val => handleCreditInput('amount', val)}
                     placeholder="Amount"
                     min={0}
-                    style={{ width: '100%' }}
+                    style={{ width: '100%', height: 44, lineHeight: '44px', padding: '0 12px' }}
                     required
                   />
                 </div>
@@ -1088,19 +1110,7 @@ function Dashboard() {
                     value={creditForm.description}
                     onChange={e => handleCreditInput('description', e.target.value)}
                     placeholder="Description (optional)"
-                    style={{
-                      width: '100%',
-                      height: 40,
-                      background: 'var(--glass-bg)',
-                      border: 'var(--glass-border)',
-                      borderRadius: 12,
-                      boxShadow: '0 2px 8px rgba(108,99,255,0.08)',
-                      padding: '10px 16px',
-                      fontSize: 16,
-                      transition: 'box-shadow 0.3s, border 0.3s',
-                      color: 'var(--foreground)',
-                    }}
-                    className="fade-in"
+                    style={{ width: '100%' }}
                   />
                 </div>
                 <div style={{ marginBottom: 12 }}>
@@ -1108,18 +1118,7 @@ function Dashboard() {
                     value={creditForm.date}
                     onChange={date => handleCreditInput('date', date)}
                     format="YYYY-MM-DD"
-                    style={{
-                      width: '100%',
-                      background: 'var(--glass-bg)',
-                      border: 'var(--glass-border)',
-                      borderRadius: 12,
-                      boxShadow: '0 2px 8px rgba(108,99,255,0.08)',
-                      padding: '10px 16px',
-                      fontSize: 16,
-                      transition: 'box-shadow 0.3s, border 0.3s',
-                      color: 'var(--foreground)',
-                    }}
-                    className="fade-in"
+                    style={{ width: '100%' }}
                   />
                 </div>
                 <button
@@ -1262,7 +1261,18 @@ function Dashboard() {
                   showMonthYearPicker
                   className="ant-input credit-datepicker"
                   maxDate={new Date()}
-                  style={{ minWidth: 180, border: 'none', borderRadius: 20 }}
+                  style={{
+                    background: '#fff',
+                    border: '1.5px solid #e0e7ef',
+                    color: '#222',
+                    borderRadius: 12,
+                    boxShadow: '0 2px 8px rgba(31,38,135,0.08)',
+                    padding: '10px 16px',
+                    fontSize: 16,
+                    width: '100%',
+                    maxWidth: '100%',
+                    overflowX: 'auto',
+                  }}
                 />
               </div>
               <div style={{ fontWeight: 600, fontSize: 18, color: '#1890ff', marginBottom: 16, textAlign: 'center' }}>
@@ -1276,7 +1286,7 @@ function Dashboard() {
                     onChange={val => handleEmiInput('amount', val)}
                     placeholder="Amount"
                     min={0}
-                    style={{ width: '100%'}}
+                    style={{ width: '100%', height: 44, lineHeight: '44px', padding: '0 12px' }}
                     required
                   />
                 </div>
@@ -1285,17 +1295,7 @@ function Dashboard() {
                     value={emiForm.description}
                     onChange={e => handleEmiInput('description', e.target.value)}
                     placeholder="Description (optional)"
-                    style={{
-                      width: '100%',
-                      background: '#f9f9f9',
-                      border: 'none',
-                      borderRadius: 12,
-                      boxShadow: '0 2px 8px rgba(31,38,135,0.08)',
-                      padding: '10px 16px',
-                      fontSize: 16,
-                      color: '#222',
-                      transition: 'box-shadow 0.3s, border 0.3s',
-                    }}
+                    style={{ width: '100%', background: '#f9f9f9', border: 'none', borderRadius: 12, boxShadow: '0 2px 8px rgba(31,38,135,0.08)', padding: '10px 16px', fontSize: 16, color: '#222', transition: 'box-shadow 0.3s, border 0.3s' }}
                     className="fade-in"
                   />
                 </div>
