@@ -141,7 +141,7 @@ function App() {
               <>
                 <Button
                   type="text"
-                  icon={<MenuOutlined style={{ fontSize: 28, color: 'var(--primary)' }} />}
+                  icon={<MenuOutlined className="menu-btn-icon" style={{ fontSize: 28, color: 'var(--primary)' }} />}
                   onClick={() => setMobileMenuOpen(true)}
                   style={{
                     display: 'flex',
