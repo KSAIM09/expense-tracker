@@ -138,22 +138,47 @@ function App() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 18, width: '100%', justifyContent: isMobile ? 'flex-start' : 'space-between' }}>
             {/* Removed React logo from navigation bar */}
             {isMobile ? (
-              <Button
-                type="text"
-                icon={<MenuOutlined style={{ fontSize: 28, color: 'var(--primary)' }} />}
-                onClick={() => setMobileMenuOpen(true)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  height: 48,
-                  width: 48,
-                  background: 'var(--glass-bg)',
-                  borderRadius: 12,
-                  boxShadow: '0 2px 8px rgba(108,99,255,0.08)',
-                  marginRight: 0
-                }}
-              />
+              <>
+                <Button
+                  type="text"
+                  icon={<MenuOutlined style={{ fontSize: 28, color: 'var(--primary)' }} />}
+                  onClick={() => setMobileMenuOpen(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: 48,
+                    width: 48,
+                    background: 'var(--glass-bg)',
+                    borderRadius: 12,
+                    boxShadow: '0 2px 8px rgba(108,99,255,0.08)',
+                    marginRight: 0
+                  }}
+                />
+                <Drawer
+                  title={<span style={{ fontWeight: 700, fontSize: 20, color: 'var(--primary)' }}>Menu</span>}
+                  placement="left"
+                  onClose={() => setMobileMenuOpen(false)}
+                  open={mobileMenuOpen}
+                  bodyStyle={{ padding: 0, background: 'var(--glass-bg)' }}
+                  headerStyle={{ background: 'var(--glass-bg)' }}
+                  className="glass fade-in"
+                >
+                  <Menu
+                    mode="vertical"
+                    selectedKeys={[currentPage]}
+                    items={menuItems}
+                    onClick={({ key }) => {
+                      setMobileMenuOpen(false);
+                      if (key === 'expenses') navigate('/expenses');
+                      else if (key === 'dashboard') navigate('/dashboard');
+                      else if (key === 'month-history') navigate('/month-history');
+                      else if (key === 'investment-insights') navigate('/investment-insights');
+                    }}
+                    style={{ background: 'transparent', border: 'none', fontWeight: 600, fontSize: 18 }}
+                  />
+                </Drawer>
+              </>
             ) : (
               <Menu
                 theme="light"
