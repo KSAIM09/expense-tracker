@@ -1125,7 +1125,7 @@ function Dashboard() {
                 <button
                   type="submit"
                   disabled={creditLoading}
-                  style={{ width: '100%', height: 44, background: '#1890ff', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 16 }}
+                  style={{ width: '100%', height: 44, background: '#1890ff', color: '#fff', border: 'none', borderRadius: 12, fontWeight: 600, fontSize: 16 }}
                 >
                   {creditLoading ? 'Adding...' : 'Add Credit'}
                 </button>
@@ -1285,7 +1285,18 @@ function Dashboard() {
                     value={emiForm.description}
                     onChange={e => handleEmiInput('description', e.target.value)}
                     placeholder="Description (optional)"
-                    style={{ width: '100%', }}
+                    style={{
+                      width: '100%',
+                      background: '#f9f9f9',
+                      border: 'none',
+                      borderRadius: 12,
+                      boxShadow: '0 2px 8px rgba(31,38,135,0.08)',
+                      padding: '10px 16px',
+                      fontSize: 16,
+                      color: '#222',
+                      transition: 'box-shadow 0.3s, border 0.3s',
+                    }}
+                    className="fade-in"
                   />
                 </div>
                 <div style={{ marginBottom: 12 }}>
@@ -1301,7 +1312,7 @@ function Dashboard() {
                 <button
                   type="submit"
                   disabled={emiLoading}
-                  style={{ width: '100%', height: 44, background: '#1890ff', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 16 }}
+                  style={{ width: '100%', height: 44, background: '#1890ff', color: '#fff', border: 'none', borderRadius: 12, fontWeight: 600, fontSize: 16 }}
                 >
                   {emiLoading ? 'Adding...' : 'Add EMI'}
                 </button>

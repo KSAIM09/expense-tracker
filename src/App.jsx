@@ -33,7 +33,9 @@ function App() {
 
   // Set the current page based on the route
   let currentPage = 'dashboard';
-  if (location.pathname.startsWith('/expenses')) {
+  if (location.pathname.startsWith('/investment-insights')) {
+    currentPage = 'investment-insights';
+  } else if (location.pathname.startsWith('/expenses')) {
     currentPage = 'expenses';
   } else if (location.pathname.startsWith('/dashboard')) {
     currentPage = 'dashboard';
@@ -133,40 +135,25 @@ function App() {
           }}
           className="glass fade-in"
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 18, width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 18, width: '100%', justifyContent: isMobile ? 'flex-start' : 'space-between' }}>
             {/* Removed React logo from navigation bar */}
             {isMobile ? (
-              <>
-                <Button
-                  type="text"
-                  icon={<MenuOutlined style={{ fontSize: 28, color: 'var(--primary)' }} />}
-                  onClick={() => setMobileMenuOpen(true)}
-                  style={{ marginRight: 16, background: 'var(--glass-bg)', borderRadius: 12, boxShadow: '0 2px 8px rgba(108,99,255,0.08)' }}
-                />
-                <Drawer
-                  title={<span style={{ fontWeight: 700, fontSize: 20, color: 'var(--primary)' }}><img src={reactLogo} alt="logo" style={{ height: 32, marginRight: 8, verticalAlign: 'middle' }} />Menu</span>}
-                  placement="left"
-                  onClose={() => setMobileMenuOpen(false)}
-                  open={mobileMenuOpen}
-                  bodyStyle={{ padding: 0, background: 'var(--glass-bg)' }}
-                  headerStyle={{ background: 'var(--glass-bg)' }}
-                  className="glass fade-in"
-                >
-                  <Menu
-                    mode="vertical"
-                    selectedKeys={[currentPage]}
-                    items={menuItems}
-                    onClick={({ key }) => {
-                      setMobileMenuOpen(false);
-                      if (key === 'expenses') navigate('/expenses');
-                      else if (key === 'dashboard') navigate('/dashboard');
-                      else if (key === 'month-history') navigate('/month-history');
-                      else if (key === 'investment-insights') navigate('/investment-insights');
-                    }}
-                    style={{ background: 'transparent', border: 'none', fontWeight: 600, fontSize: 18 }}
-                  />
-                </Drawer>
-              </>
+              <Button
+                type="text"
+                icon={<MenuOutlined style={{ fontSize: 28, color: 'var(--primary)' }} />}
+                onClick={() => setMobileMenuOpen(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: 48,
+                  width: 48,
+                  background: 'var(--glass-bg)',
+                  borderRadius: 12,
+                  boxShadow: '0 2px 8px rgba(108,99,255,0.08)',
+                  marginRight: 0
+                }}
+              />
             ) : (
               <Menu
                 theme="light"
@@ -183,34 +170,34 @@ function App() {
                 className="fade-in"
               />
             )}
-            {user && (
-              <Dropdown
-                overlay={
-                  <div style={{ padding: 16, minWidth: 180, background: 'var(--glass-bg)', borderRadius: 16, boxShadow: '0 2px 12px rgba(24,144,255,0.08)', border: 'var(--glass-border)', textAlign: 'center', animation: 'fadeIn 0.5s' }}>
-                    <div style={{ fontWeight: 700, marginBottom: 10, fontSize: 18, color: 'var(--primary)' }}>{userName}</div>
-                    <Button type="primary" danger onClick={handleLogout} style={{ width: '100%', borderRadius: 10, fontWeight: 600 }}>
-                      Logout
-                    </Button>
-                  </div>
-                }
-                trigger={['click']}
-                placement="bottomRight"
-                arrow
-              >
-                <span style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginLeft: 18 }}>
-                  {user.photoURL ? (
-                    <img
-                      src={user.photoURL}
-                      alt="User"
-                      style={{ width: '38px', height: '38px', borderRadius: '50%', boxShadow: '0 2px 8px rgba(108,99,255,0.12)' }}
-                    />
-                  ) : (
-                    <UserOutlined style={{ fontSize: '28px', color: 'var(--primary)' }} />
-                  )}
-                </span>
-              </Dropdown>
-            )}
           </div>
+          {user && (
+            <Dropdown
+              overlay={
+                <div style={{ padding: 16, minWidth: 180, background: '#fff', borderRadius: 16, boxShadow: '0 2px 12px rgba(24,144,255,0.08)', border: 'none', textAlign: 'center', animation: 'fadeIn 0.5s', color: '#222' }}>
+                  <div style={{ fontWeight: 700, marginBottom: 10, fontSize: 18, color: 'var(--primary)' }}>{userName}</div>
+                  <Button type="primary" danger onClick={handleLogout} style={{ width: '100%', borderRadius: 10, fontWeight: 600 }}>
+                    Logout
+                  </Button>
+                </div>
+              }
+              trigger={['click']}
+              placement="bottomRight"
+              arrow
+            >
+              <span style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginLeft: 18 }}>
+                {user.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt="User"
+                    style={{ width: '38px', height: '38px', borderRadius: '50%', boxShadow: '0 2px 8px rgba(108,99,255,0.12)' }}
+                  />
+                ) : (
+                  <UserOutlined style={{ fontSize: '28px', color: 'var(--primary)' }} />
+                )}
+              </span>
+            </Dropdown>
+          )}
         </Header>
       )}
       <Content style={{ padding: '24px' }}>
