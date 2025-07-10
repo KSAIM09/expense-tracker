@@ -68,6 +68,12 @@ function Dashboard() {
   const [emiLoading, setEmiLoading] = useState(false);
   const [visibleCredits, setVisibleCredits] = useState(3);
   const [visibleEmi, setVisibleEmi] = useState(3);
+  const [editEmiModalVisible, setEditEmiModalVisible] = useState(false);
+  const [editingEmi, setEditingEmi] = useState(null);
+  const [editEmiForm, setEditEmiForm] = useState({ amount: '', description: '', date: null });
+
+  // For monthly history load more
+  const [visibleDays, setVisibleDays] = useState(10);
 
   const user = auth.currentUser;
 
@@ -336,6 +342,9 @@ function Dashboard() {
       };
     });
 
+  // For monthly history table, slice dataSource
+  const visibleDataSource = dataSource.slice(0, visibleDays);
+
   // Fetch budgets from Firebase (per month, for selected month)
   useEffect(() => {
     if (!user) return;
@@ -567,6 +576,57 @@ function Dashboard() {
     }
   };
 
+  // EMI edit handlers
+  const handleEditEmi = (emi) => {
+    setEditingEmi(emi);
+    setEditEmiForm({
+      amount: emi.amount,
+      description: emi.description,
+      date: DatePicker ? moment(emi.date, 'YYYY-MM-DD') : null,
+    });
+    setEditEmiModalVisible(true);
+  };
+  const handleEditEmiInput = (field, value) => {
+    setEditEmiForm({ ...editEmiForm, [field]: value });
+  };
+  const handleEditEmiSubmit = async () => {
+    if (!user || !editingEmi) return;
+    try {
+      const formattedDate = editEmiForm.date.format('YYYY-MM-DD');
+      const emiRef = ref(db, `emi/${user.uid}/${editingEmi.date}/${editingEmi.id}`);
+      // If date changed, remove from old date and push to new date
+      if (formattedDate !== editingEmi.date) {
+        await remove(emiRef);
+        const newRef = ref(db, `emi/${user.uid}/${formattedDate}`);
+        await push(newRef, {
+          amount: parseFloat(editEmiForm.amount),
+          description: editEmiForm.description,
+        });
+      } else {
+        await set(emiRef, {
+          amount: parseFloat(editEmiForm.amount),
+          description: editEmiForm.description,
+        });
+      }
+      toast.success('EMI updated!');
+      setEditEmiModalVisible(false);
+      setEditingEmi(null);
+    } catch (e) {
+      toast.error('Failed to update EMI');
+    }
+  };
+  // EMI delete handler
+  const handleDeleteEmi = async (emi) => {
+    if (!user) return;
+    try {
+      const emiRef = ref(db, `emi/${user.uid}/${emi.date}/${emi.id}`);
+      await remove(emiRef);
+      toast.success('EMI deleted!');
+    } catch (e) {
+      toast.error('Failed to delete EMI');
+    }
+  };
+
   // Reset visible count when month or tab changes
   useEffect(() => { setVisibleCredits(3); }, [selectedCreditMonth, activeTab]);
   useEffect(() => { setVisibleEmi(3); }, [selectedCreditMonth, activeTab]);
@@ -791,7 +851,7 @@ function Dashboard() {
             </div>
 
             <Table
-              dataSource={dataSource}
+              dataSource={visibleDataSource}
               columns={columns}
               rowKey="key"
               pagination={{ pageSize: 5, position: ["bottomRight"] }}
@@ -1332,6 +1392,18 @@ function Dashboard() {
                           <div style={{ color: '#888', fontSize: 13 }}>{emi.description}</div>
                           <div style={{ color: '#1890ff', fontSize: 13 }}>{moment(emi.date, 'YYYY-MM-DD').format('DD MMM, YYYY')}</div>
                         </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <EditOutlined style={{ color: '#1890ff', fontSize: 18, cursor: 'pointer' }} onClick={() => handleEditEmi(emi)} />
+                          <Popconfirm
+                            title="Delete this EMI?"
+                            onConfirm={() => handleDeleteEmi(emi)}
+                            okText="Yes"
+                            cancelText="No"
+                            placement="top"
+                          >
+                            <DeleteOutlined style={{ color: '#ff4d4f', fontSize: 18, cursor: 'pointer' }} />
+                          </Popconfirm>
+                        </div>
                       </div>
                     ))
                 )}
@@ -1370,6 +1442,49 @@ function Dashboard() {
           background: #fff;
         }
       `}</style>
+      {/* EMI Edit Modal */}
+      <Modal
+        title="Edit EMI"
+        open={editEmiModalVisible}
+        onCancel={() => setEditEmiModalVisible(false)}
+        onOk={handleEditEmiSubmit}
+        okText="Save"
+        cancelText="Cancel"
+        width={"90vw"}
+        style={{ maxWidth: 400, padding: 0 }}
+        bodyStyle={{ padding: 16 }}
+      >
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Amount</label>
+          <InputNumber
+            value={editEmiForm.amount}
+            onChange={val => handleEditEmiInput('amount', val)}
+            placeholder="Amount"
+            min={0}
+            style={{ width: '100%', fontSize: '1rem', height: 44, padding: '8px 12px', borderRadius: 8 }}
+            required
+          />
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Description</label>
+          <Input
+            value={editEmiForm.description}
+            onChange={e => handleEditEmiInput('description', e.target.value)}
+            placeholder="Description (optional)"
+            style={{ width: '100%', fontSize: '1rem', height: 44, padding: '8px 12px', borderRadius: 8 }}
+          />
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Date</label>
+          <DatePicker
+            value={editEmiForm.date}
+            onChange={date => handleEditEmiInput('date', date)}
+            format="YYYY-MM-DD"
+            style={{ width: '100%', fontSize: '1rem', height: 44, borderRadius: 8, padding: '8px 12px' }}
+            required
+          />
+        </div>
+      </Modal>
     </div>
   );
 }

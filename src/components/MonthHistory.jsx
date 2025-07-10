@@ -10,6 +10,7 @@ import { HistoryOutlined } from '@ant-design/icons';
 function MonthHistory() {
   const [monthlyExpenses, setMonthlyExpenses] = useState({});
   const [expandedMonths, setExpandedMonths] = useState([]);
+  const [visibleCounts, setVisibleCounts] = useState({}); // Track visible expenses per month
   const user = auth.currentUser;
 
   useEffect(() => {
@@ -46,6 +47,18 @@ function MonthHistory() {
       ? prev.filter(m => m !== month)
       : [...prev, month]
     );
+    setVisibleCounts(prev => ({
+      ...prev,
+      [month]: prev[month] || 6 // Set default visible count to 6 when expanding
+    }));
+  };
+
+  // Handle load more for a month
+  const handleLoadMore = (month, total) => {
+    setVisibleCounts(prev => ({
+      ...prev,
+      [month]: Math.min((prev[month] || 6) + 6, total)
+    }));
   };
 
   return (
@@ -99,6 +112,7 @@ function MonthHistory() {
           const expenses = monthlyExpenses[month];
           const total = expenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
           const isExpanded = expandedMonths.includes(month);
+          const visible = visibleCounts[month] || 6;
           return (
             <Card
               key={month}
@@ -143,7 +157,7 @@ function MonthHistory() {
                           <div style={{ flex: 1, textAlign: 'center' }}>Category</div>
                         </div>
                         <AnimatePresence>
-                          {expenses.map((exp, idx) => (
+                          {expenses.slice(0, visible).map((exp, idx) => (
                             <motion.div
                               key={exp.id}
                               className="mh-card-row"
@@ -165,6 +179,16 @@ function MonthHistory() {
                             </motion.div>
                           ))}
                         </AnimatePresence>
+                        {expenses.length > visible && (
+                          <div style={{ textAlign: 'center', marginTop: 8 }}>
+                            <Button
+                              onClick={() => handleLoadMore(month, expenses.length)}
+                              style={{ width: '100%', height: 40, background: '#1890ff', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 16 }}
+                            >
+                              Load More
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     ) : <Empty description="No expenses" />}
                   </motion.div>
